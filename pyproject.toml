@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "chunksum"
+version = "0.1.0"
+description = "Print FastCDC rolling hash chunks and checksums."
+authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastcdc = "^1.4.2"
+tqdm = "^4.64.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
