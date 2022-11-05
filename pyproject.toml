@@ -6,6 +6,13 @@ authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
+[project.urls]
+"Homepage" = "https://github.com/xyb/chunksum"
+"Bug Tracker" = "https://github.com/xyb/chunksum/issues"
+
+[tool.poetry.scripts]
+chunksum = 'chunksum.chunksum:main'
+
 [tool.poetry.dependencies]
 python = "^3.9"
 fastcdc = "^1.4.2"

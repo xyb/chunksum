@@ -10,7 +10,7 @@ from fastcdc.const import AVERAGE_MIN
 from tqdm.auto import tqdm
 from tqdm.utils import CallbackIOWrapper
 
-from cdc import Chunker
+from .cdc import Chunker
 
 
 def iter_file_content(file, size=1024):
@@ -221,7 +221,7 @@ Examples:
 '''.format(cmd=sys.argv[0]))
 
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) == 1:
         help()
         sys.exit()
@@ -230,3 +230,6 @@ if __name__ == '__main__':
     else:
         path, alg_name = sys.argv[1], 'fck4sha2'
     walk(path, sys.stdout, alg_name)
+
+if __name__ == '__main__':
+    main()
