@@ -5,7 +5,6 @@ from os.path import join, getsize
 import os
 import sys
 
-from fastcdc import fastcdc
 from fastcdc.const import AVERAGE_MIN
 from tqdm.auto import tqdm
 from tqdm.utils import CallbackIOWrapper
@@ -27,6 +26,7 @@ def iter_file_content(file, size=1024):
             break
         yield content
 
+
 def iter_file_content_progress(file, path, size=1024):
     with tqdm(total=getsize(path),
               desc=path,
@@ -37,26 +37,32 @@ def iter_file_content_progress(file, path, size=1024):
         fobj = CallbackIOWrapper(t.update, file, 'read')
         yield from iter_file_content(fobj, size)
 
+
 class ChunkSizeError(Exception):
     ...
+
 
 class ChunkSizeTooSmall(ChunkSizeError):
     ...
 
+
 class ChunkSizeAlign(ChunkSizeError):
     ...
+
 
 class ChunkSize:
     """
     >>> ChunkSize(1024)
     ChunkSize<1024>
     """
+
     def __init__(self, avg_bytes=AVERAGE_MIN):
         if (avg_bytes) < AVERAGE_MIN:
             raise ChunkSizeError('chunk size too small: {}'.format(avg_bytes))
         if avg_bytes % 4 != 0:
             raise ChunkSizeError('chunk size should be a multiple of 4, '
-                                 'but {} % 5 = {}'.format(avg_bytes, avg_bytes % 4))
+                                 'but {} % 5 = {}'.format(avg_bytes,
+                                                          avg_bytes % 4))
         self.avg = avg_bytes
         self.min = avg_bytes / 4
         self.max = avg_bytes * 4
@@ -82,6 +88,7 @@ class ChunkSize:
         """
         return ChunkSize(self.avg * x)
 
+
 KILO = ChunkSize(1024)  # 1KB
 MEGA = KILO * 1024  # 1MB
 GIGA = KILO * 1024  # 1MB
@@ -99,6 +106,7 @@ def get_chunker(size_name='', avg=1024, min=256, max=4096):
         return Chunker(size.avg, size.min, size.max)
     else:
         return Chunker(avg, min, max)
+
 
 def get_hasher(name):
     name = name.lower()
@@ -120,14 +128,18 @@ def get_hasher(name):
     else:
         raise Exception('unsupported hash: {}'.format(name))
 
+
 def compute_file(file, alg_name='fck4sha2', avg=0, min=0, max=0):
     """
 
     >>> import io
     >>> stream = io.BytesIO(b'abcdefgh' * 20000)
     >>> result = compute_file(stream, alg_name='fck4sha2')
-    >>> result
-    [(b'\\xfb...\\xd3', 65536), (b'\\xfb...\\xd3', 65536), (b'tG...\\xfe', 28928)]
+    >>> for i in result:
+    ...     print(i)
+    (b'\\xfb...\\xd3', 65536)
+    (b'\\xfb...\\xd3', 65536)
+    (b'tG...\\xfe', 28928)
     """
     if alg_name:
         chunk_size_name = alg_name[2:4]
@@ -156,6 +168,7 @@ def compute_file(file, alg_name='fck4sha2', avg=0, min=0, max=0):
         result.append(gen_item(chunker.tail, hasher_name))
     return result
 
+
 def list_hash(digests, hasher_name='sha2'):
     """
     >>> list_hash([b'abc', b'def'])
@@ -165,6 +178,7 @@ def list_hash(digests, hasher_name='sha2'):
     h = get_hasher(hasher_name)
     h.update(plain)
     return h.digest()
+
 
 def format_a_result(path, result, alg_name):
     """
@@ -178,7 +192,7 @@ def format_a_result(path, result, alg_name):
                        for digest, size in result])
     hasher_name = alg_name[len('fck0'):]
     digest = list_hash([d for d, _ in result], hasher_name)
-    #alg_name = 'fastcdc-{}-{}-{}-sha256'.format(AVG, MIN, MAX)
+    # alg_name = 'fastcdc-{}-{}-{}-sha256'.format(AVG, MIN, MAX)
     return '{}  {}  {}!{}'.format(digest.hex(), path, alg_name, chunks)
 
 
@@ -191,6 +205,7 @@ def walk(target, output_file, alg_name='fck4sha2'):
                   file=output_file,
                   flush=True)
         dirs.sort()
+
 
 def help():
     print('''Print FastCDC rolling hash chunks and checksums.
@@ -230,6 +245,7 @@ def main():
     else:
         path, alg_name = sys.argv[1], 'fck4sha2'
     walk(path, sys.stdout, alg_name)
+
 
 if __name__ == '__main__':
     main()

@@ -99,7 +99,7 @@ class Chunker:
     def reset(self) -> bytes:
         """
         Reset the chunker.
-        
+
         >>> # not reset
         >>> c = Chunker()
         >>> list(c.update(b'12345').chunks)
