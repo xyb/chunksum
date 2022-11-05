@@ -5,9 +5,15 @@ description = "Print FastCDC rolling hash chunks and checksums."
 authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/xyb/chunksum"
+repository = "https://github.com/xyb/chunksum"
+classifiers = [
+    "Environment :: Console",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Utilities",
+]
 
-[project.urls]
-"Homepage" = "https://github.com/xyb/chunksum"
+[tool.poetry.urls]
 "Bug Tracker" = "https://github.com/xyb/chunksum/issues"
 
 [tool.poetry.scripts]
