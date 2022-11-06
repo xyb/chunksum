@@ -91,7 +91,7 @@ class ChunkSize:
 
 KILO = ChunkSize(1024)  # 1KB
 MEGA = KILO * 1024  # 1MB
-GIGA = KILO * 1024  # 1MB
+GIGA = MEGA * 1024  # 1GB
 
 
 def get_chunker(size_name='', avg=1024, min=256, max=4096):
