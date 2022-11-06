@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from hashlib import sha256, blake2b, blake2s
-from os.path import join, getsize
 import os
 import sys
+from hashlib import blake2b, blake2s, sha256
+from os.path import getsize, join
 
 from fastcdc.const import AVERAGE_MIN
 from tqdm.auto import tqdm
