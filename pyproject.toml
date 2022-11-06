@@ -20,7 +20,7 @@ classifiers = [
 chunksum = 'chunksum.chunksum:main'
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.7"
 fastcdc = "^1.4.2"
 tqdm = "^4.64.1"
 
