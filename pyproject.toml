@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "chunksum"
-version = "0.2.1"
+version = "0.3.0"
 description = "Print FastCDC rolling hash chunks and checksums."
 authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
 license = "MIT"
