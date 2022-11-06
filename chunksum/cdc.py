@@ -1,4 +1,5 @@
 import io
+from typing import List
 
 from fastcdc import fastcdc
 
@@ -79,7 +80,7 @@ class Chunker:
         return self
 
     @property
-    def chunks(self) -> list[bytes]:
+    def chunks(self) -> List[bytes]:
         """Get bytes of chunks."""
         if not self._iter:
             return
