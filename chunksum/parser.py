@@ -1,7 +1,7 @@
 def parse_chunks(data):
-    alg_name, chunks = data.split('!')
+    alg_name, chunks = data.split("!")
     if chunks:
-        chunks = [c.split(':') for c in chunks.split(',') if c]
+        chunks = [c.split(":") for c in chunks.split(",") if c]
         chunks = [(id, int(size)) for id, size in chunks]
         return alg_name, chunks
     else:
@@ -24,18 +24,20 @@ def parse_line(line):
      'chunks': [('bad', 20), ('beef', 30)],
      'path': './file2'}
     """
-    items = line.split('  ')
+    items = line.split("  ")
     checksum = items[0]
     chunks = items[-1]
     if len(items) > 3:
-        path = '  '.join(items[1:-1])
+        path = "  ".join(items[1:-1])
     else:
         path = items[1]
     alg_name, chunks = parse_chunks(chunks)
-    return dict(checksum=checksum,
-                path=path,
-                alg_name=alg_name,
-                chunks=chunks)
+    return dict(
+        checksum=checksum,
+        path=path,
+        alg_name=alg_name,
+        chunks=chunks,
+    )
 
 
 def parse_chunksums(file):

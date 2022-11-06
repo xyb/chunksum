@@ -1,9 +1,11 @@
 #!/usr/bin/env python
-
 import os
 import sys
-from hashlib import blake2b, blake2s, sha256
-from os.path import getsize, join
+from hashlib import blake2b
+from hashlib import blake2s
+from hashlib import sha256
+from os.path import getsize
+from os.path import join
 
 from fastcdc.const import AVERAGE_MIN
 from tqdm.auto import tqdm
@@ -28,13 +30,15 @@ def iter_file_content(file, size=1024):
 
 
 def iter_file_content_progress(file, path, size=1024):
-    with tqdm(total=getsize(path),
-              desc=path,
-              unit='B',
-              unit_scale=True,
-              unit_divisor=1024,
-              delay=1.0) as t:
-        fobj = CallbackIOWrapper(t.update, file, 'read')
+    with tqdm(
+        total=getsize(path),
+        desc=path,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+        delay=1.0,
+    ) as t:
+        fobj = CallbackIOWrapper(t.update, file, "read")
         yield from iter_file_content(fobj, size)
 
 
@@ -58,11 +62,15 @@ class ChunkSize:
 
     def __init__(self, avg_bytes=AVERAGE_MIN):
         if (avg_bytes) < AVERAGE_MIN:
-            raise ChunkSizeError('chunk size too small: {}'.format(avg_bytes))
+            raise ChunkSizeError(f"chunk size too small: {avg_bytes}")
         if avg_bytes % 4 != 0:
-            raise ChunkSizeError('chunk size should be a multiple of 4, '
-                                 'but {} % 5 = {}'.format(avg_bytes,
-                                                          avg_bytes % 4))
+            raise ChunkSizeError(
+                "chunk size should be a multiple of 4, "
+                "but {} % 5 = {}".format(
+                    avg_bytes,
+                    avg_bytes % 4,
+                ),
+            )
         self.avg = avg_bytes
         self.min = avg_bytes / 4
         self.max = avg_bytes * 4
@@ -72,7 +80,7 @@ class ChunkSize:
         >>> ChunkSize(64 * 1024)
         ChunkSize<65536>
         """
-        return 'ChunkSize<{}>'.format(self.avg)
+        return f"ChunkSize<{self.avg}>"
 
     def __mul__(self, x):
         """
@@ -94,14 +102,14 @@ MEGA = KILO * 1024  # 1MB
 GIGA = MEGA * 1024  # 1GB
 
 
-def get_chunker(size_name='', avg=1024, min=256, max=4096):
+def get_chunker(size_name="", avg=1024, min=256, max=4096):
     if size_name and len(size_name) == 2:
         unit, power = size_name
-        coefficient = {'k': KILO, 'm': MEGA, 'g': GIGA}.get(unit.lower())
+        coefficient = {"k": KILO, "m": MEGA, "g": GIGA}.get(unit.lower())
         if not coefficient:
-            raise Exception('wrong unit of chunk size: {}'.format(unit))
+            raise Exception(f"wrong unit of chunk size: {unit}")
         if not power.isdigit():
-            raise Exception('chunk size is not a number: {}'.format(power))
+            raise Exception(f"chunk size is not a number: {power}")
         size = coefficient * 2 ** int(power)
         return Chunker(size.avg, size.min, size.max)
     else:
@@ -110,26 +118,26 @@ def get_chunker(size_name='', avg=1024, min=256, max=4096):
 
 def get_hasher(name):
     name = name.lower()
-    if name == 'sha2':
+    if name == "sha2":
         return sha256()
-    elif name.startswith('blake2'):
-        prefix = name[:len('blake2b')]
-        digest_size = name[len('blake2b'):]
-        if prefix == 'blake2b':
+    elif name.startswith("blake2"):
+        prefix = name[: len("blake2b")]
+        digest_size = name[len("blake2b") :]
+        if prefix == "blake2b":
             func = blake2b
-        elif prefix == 'blake2s':
+        elif prefix == "blake2s":
             func = blake2s
         else:
-            raise Exception('unsupported blake2 hash: {}'.format(prefix))
+            raise Exception(f"unsupported blake2 hash: {prefix}")
         if digest_size:
             return func(digest_size=int(digest_size))
         else:
             return func()
     else:
-        raise Exception('unsupported hash: {}'.format(name))
+        raise Exception(f"unsupported hash: {name}")
 
 
-def compute_file(file, alg_name='fck4sha2', avg=0, min=0, max=0):
+def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0):
     """
 
     >>> import io
@@ -148,7 +156,7 @@ def compute_file(file, alg_name='fck4sha2', avg=0, min=0, max=0):
         chunker = Chunker(avg=avg, min=min, max=max)
     result = []
     buffer_size = 4 * 1024 * 1024
-    if hasattr(file, 'name'):
+    if hasattr(file, "name"):
         iter_ = iter_file_content_progress(file, file.name, size=buffer_size)
     else:
         iter_ = iter_file_content(file, size=buffer_size)
@@ -159,7 +167,7 @@ def compute_file(file, alg_name='fck4sha2', avg=0, min=0, max=0):
         h.update(data)
         return (h.digest(), size)
 
-    hasher_name = alg_name[len('fck0'):]
+    hasher_name = alg_name[len("fck0") :]
     for data in iter_:
         chunker.update(data)
         for chunk in chunker.chunks:
@@ -169,12 +177,12 @@ def compute_file(file, alg_name='fck4sha2', avg=0, min=0, max=0):
     return result
 
 
-def list_hash(digests, hasher_name='sha2'):
+def list_hash(digests, hasher_name="sha2"):
     """
     >>> list_hash([b'abc', b'def'])
     b'\xbe\xf5...\xd9<G!'
     """
-    plain = b''.join(digests)
+    plain = b"".join(digests)
     h = get_hasher(hasher_name)
     h.update(plain)
     return h.digest()
@@ -188,27 +196,29 @@ def format_a_result(path, result, alg_name):
     >>> format_a_result('example', result, 'fck4sha2')
     '82...b7  example  fck4sha2!fb...d3:65536,fb...d3:65536,74...fe:28928'
     """
-    chunks = ','.join(['{}:{}'.format(digest.hex(), size)
-                       for digest, size in result])
-    hasher_name = alg_name[len('fck0'):]
+    chunks = ",".join([f"{digest.hex()}:{size}" for digest, size in result])
+    hasher_name = alg_name[len("fck0") :]
     digest = list_hash([d for d, _ in result], hasher_name)
     # alg_name = 'fastcdc-{}-{}-{}-sha256'.format(AVG, MIN, MAX)
-    return '{}  {}  {}!{}'.format(digest.hex(), path, alg_name, chunks)
+    return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
 
 
-def walk(target, output_file, alg_name='fck4sha2'):
+def walk(target, output_file, alg_name="fck4sha2"):
     for root, dirs, files in os.walk(target):
         for file in sorted(files):
             path = join(root, file)
-            chunks = compute_file(open(path, 'rb'), alg_name)
-            print(format_a_result(path, chunks, alg_name),
-                  file=output_file,
-                  flush=True)
+            chunks = compute_file(open(path, "rb"), alg_name)
+            print(
+                format_a_result(path, chunks, alg_name),
+                file=output_file,
+                flush=True,
+            )
         dirs.sort()
 
 
 def help():
-    print('''Print FastCDC rolling hash chunks and checksums.
+    print(
+        """Print FastCDC rolling hash chunks and checksums.
 
 Usage: {cmd} <dir> [<alg_name>] > chunksums
 
@@ -233,7 +243,10 @@ Examples:
   $ {cmd} /etc > ~/etc.chunksums
 
   $ {cmd} ~/Videos fcm4blake2b32 > ~/Videos/chunksums
-'''.format(cmd=sys.argv[0]))
+""".format(
+            cmd=sys.argv[0],
+        ),
+    )
 
 
 def main():
@@ -243,9 +256,9 @@ def main():
     if len(sys.argv) > 2:
         path, alg_name = sys.argv[1:3]
     else:
-        path, alg_name = sys.argv[1], 'fck4sha2'
+        path, alg_name = sys.argv[1], "fck4sha2"
     walk(path, sys.stdout, alg_name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

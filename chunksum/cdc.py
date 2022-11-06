@@ -8,20 +8,25 @@ CHUNKER_AVG_CHUNK_SIZE = 8192
 _default_chunker = None
 
 
-def get_chunk_func(avg_chunk_size: int = CHUNKER_AVG_CHUNK_SIZE,
-                   min_chunk_size: int = None,
-                   max_chunk_size: int = None) -> callable:
+def get_chunk_func(
+    avg_chunk_size: int = CHUNKER_AVG_CHUNK_SIZE,
+    min_chunk_size: int = None,
+    max_chunk_size: int = None,
+) -> callable:
     def chunk_func(stream):
-        return fastcdc(stream,
-                       min_size=min_chunk_size,
-                       avg_size=avg_chunk_size,
-                       max_size=max_chunk_size,
-                       fat=True,
-                       hf=None)
+        return fastcdc(
+            stream,
+            min_size=min_chunk_size,
+            avg_size=avg_chunk_size,
+            max_size=max_chunk_size,
+            fat=True,
+            hf=None,
+        )
+
     return chunk_func
 
 
-def default_chunker() -> 'Chunker':
+def default_chunker() -> "Chunker":
     global _default_chunker
 
     if not _default_chunker:
@@ -53,18 +58,22 @@ class Chunker:
     >>> assert chunk1 + chunk2 == chunks
     """
 
-    def __init__(self,
-                 avg_chunk_size: int = CHUNKER_AVG_CHUNK_SIZE,
-                 min_chunk_size: int = None,
-                 max_chunk_size: int = None):
+    def __init__(
+        self,
+        avg_chunk_size: int = CHUNKER_AVG_CHUNK_SIZE,
+        min_chunk_size: int = None,
+        max_chunk_size: int = None,
+    ):
         self.avg_chunk_size = avg_chunk_size
-        self._chunker = get_chunk_func(avg_chunk_size=self.avg_chunk_size,
-                                       min_chunk_size=min_chunk_size,
-                                       max_chunk_size=max_chunk_size)
+        self._chunker = get_chunk_func(
+            avg_chunk_size=self.avg_chunk_size,
+            min_chunk_size=min_chunk_size,
+            max_chunk_size=max_chunk_size,
+        )
         self._iter = None
-        self._tail = b''
+        self._tail = b""
 
-    def update(self, message: bytes) -> 'Chunker':
+    def update(self, message: bytes) -> "Chunker":
         self.message = message
         self._iter = self._chunker(io.BytesIO(self._tail + message))
         return self
@@ -75,7 +84,7 @@ class Chunker:
         if not self._iter:
             return
 
-        self._tail = b''
+        self._tail = b""
         prev = None
         for chunk in self._iter:
             content = chunk.data
@@ -119,5 +128,5 @@ class Chunker:
         b'67890'
         """
         remaining = self._tail
-        self._tail = b''
+        self._tail = b""
         return remaining
