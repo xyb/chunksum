@@ -4,5 +4,5 @@ unittest:
 	pytest --doctest-modules --last-failed --durations=3
 
 format:
-	autoflake chunksum/*.py
+	autoflake -i chunksum/*.py
 	isort chunksum/*.py
