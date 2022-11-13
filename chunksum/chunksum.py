@@ -145,13 +145,13 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
 def get_hasher(name):
     """
     >>> get_hasher('sha2')
-    <sha256 _hashlib.HASH object @ 0x...>
+    <sha256 ...>
     >>> get_hasher('blake2b')
-    <_blake2.blake2b object at 0x...>
+    <_blake2.blake2b ...>
     >>> get_hasher('blake2b32')
-    <_blake2.blake2b object at 0x...>
+    <_blake2.blake2b ...>
     >>> get_hasher('blake2s')
-    <_blake2.blake2s object at 0x...>
+    <_blake2.blake2s ...>
     >>> get_hasher('badname')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
