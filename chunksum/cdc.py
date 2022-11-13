@@ -27,16 +27,6 @@ def get_chunk_func(
     return chunk_func
 
 
-def default_chunker() -> "Chunker":
-    global _default_chunker
-
-    if not _default_chunker:
-        _default_chunker = Chunker(
-            avg_chunk_size=CHUNKER_AVG_CHUNK_SIZE,
-        )
-    return _default_chunker
-
-
 class Chunker:
     """Chunker of CDC(Content-defined Chunking).
 
@@ -66,6 +56,8 @@ class Chunker:
         max_chunk_size: int = None,
     ):
         self.avg_chunk_size = avg_chunk_size
+        self.min_chunk_size = min_chunk_size
+        self.max_chunk_size = max_chunk_size
         self._chunker = get_chunk_func(
             avg_chunk_size=self.avg_chunk_size,
             min_chunk_size=min_chunk_size,
@@ -73,6 +65,13 @@ class Chunker:
         )
         self._iter = None
         self._tail = b""
+
+    def __repr__(self):
+        return "<Chunker avg={}, min={}, max={}>".format(
+            self.avg_chunk_size,
+            self.min_chunk_size,
+            self.max_chunk_size,
+        )
 
     def update(self, message: bytes) -> "Chunker":
         self.message = message
