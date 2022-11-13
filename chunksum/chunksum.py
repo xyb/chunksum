@@ -58,7 +58,15 @@ class ChunkSize:
     """
     >>> ChunkSize(1024)
     ChunkSize<1024>
-    """
+    >>> ChunkSize(1)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    chunksum.chunksum.ChunkSizeError: chunk size too small: 1
+    >>> ChunkSize(1024 + 1)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    chunksum.chunksum.ChunkSizeError: chunk size should be a multiple of 4, but 1025 % 5 = 1
+    """  # noqa: E501
 
     def __init__(self, avg_bytes=AVERAGE_MIN):
         if (avg_bytes) < AVERAGE_MIN:
@@ -103,6 +111,24 @@ GIGA = MEGA * 1024  # 1GB
 
 
 def get_chunker(size_name="", avg=1024, min=256, max=4096):
+    """
+    >>> get_chunker('k0')
+    <Chunker avg=1024, min=256.0, max=4096>
+    >>> get_chunker('K9')
+    <Chunker avg=524288, min=131072.0, max=2097152>
+    >>> get_chunker('m2')
+    <Chunker avg=4194304, min=1048576.0, max=16777216>
+    >>> get_chunker('g1')
+    <Chunker avg=2147483648, min=536870912.0, max=8589934592>
+    >>> get_chunker('x1')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    Exception: wrong unit of chunk size: x
+    >>> get_chunker('ka')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    Exception: chunk size is not a number: a
+    """
     if size_name and len(size_name) == 2:
         unit, power = size_name
         coefficient = {"k": KILO, "m": MEGA, "g": GIGA}.get(unit.lower())
@@ -117,6 +143,28 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
 
 
 def get_hasher(name):
+    """
+    >>> get_hasher('sha2')
+    <sha256 _hashlib.HASH object @ 0x...>
+    >>> get_hasher('blake2b')
+    <_blake2.blake2b object at 0x...>
+    >>> get_hasher('blake2b32')
+    <_blake2.blake2b object at 0x...>
+    >>> get_hasher('blake2s')
+    <_blake2.blake2s object at 0x...>
+    >>> get_hasher('badname')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    Exception: unsupported hash: badname
+    >>> get_hasher('blake2x')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    Exception: unsupported blake2 hash: blake2x
+    >>> get_hasher('blake2')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    Exception: unsupported blake2 hash: blake2
+    """
     name = name.lower()
     if name == "sha2":
         return sha256()
@@ -137,7 +185,7 @@ def get_hasher(name):
         raise Exception(f"unsupported hash: {name}")
 
 
-def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0):
+def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0, hash="sha2"):
     """
 
     >>> import io
@@ -148,12 +196,20 @@ def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0):
     (b'\\xfb...\\xd3', 65536)
     (b'\\xfb...\\xd3', 65536)
     (b'tG...\\xfe', 28928)
+    >>> stream = io.BytesIO(b'abcdefgh' * 2000)
+    >>> result = compute_file(stream, alg_name='', avg=1024, min=256, max=4096)
+    >>> for i in result:
+    ...     print(i)
+    (b'\\xbfb...\\x10T', 4096)
+    (b'\\xbfb...\\x10T', 4096)
+    (b'\\xbfb...\\x10T', 4096)
+    (b't\\x87...\\xcft', 3712)
     """
     if alg_name:
         chunk_size_name = alg_name[2:4]
         chunker = get_chunker(chunk_size_name)
     else:
-        chunker = Chunker(avg=avg, min=min, max=max)
+        chunker = get_chunker(avg=avg, min=min, max=max)
     result = []
     buffer_size = 4 * 1024 * 1024
     if hasattr(file, "name"):
@@ -167,7 +223,7 @@ def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0):
         h.update(data)
         return (h.digest(), size)
 
-    hasher_name = alg_name[len("fck0") :]
+    hasher_name = alg_name[len("fck0") :] or hash
     for data in iter_:
         chunker.update(data)
         for chunk in chunker.chunks:
@@ -250,15 +306,37 @@ Examples:
 
 
 def main():
+    """
+    >>> sys.argv = ['chunksup']
+    >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Print ...
+    Usage: ...
+    ...
+
+    >>> import tempfile
+    >>> import os.path
+    >>> dir = tempfile.TemporaryDirectory()
+    >>> path = os.path.join(dir.name, 'testfile')
+    >>> _ = open(path, 'wb').write(b'hello')
+    >>> sys.argv = ['chunksum', dir.name]
+    >>> main()
+    9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
+    >>> sys.argv = ['chunksum', dir.name, 'fcm0blake2b32']
+    >>> main()
+    901c...ce59  .../testfile  fcm0blake2b32!324d...72cf:5
+    >>> sys.argv = ['chunksum', dir.name, 'fcm0blake2s']
+    >>> main()
+    8d95...5ee5  .../testfile  fcm0blake2s!1921...ca25:5
+    """
     if len(sys.argv) == 1:
         help()
-        sys.exit()
-    if len(sys.argv) > 2:
-        path, alg_name = sys.argv[1:3]
     else:
-        path, alg_name = sys.argv[1], "fck4sha2"
-    walk(path, sys.stdout, alg_name)
+        if len(sys.argv) > 2:
+            path, alg_name = sys.argv[1:3]
+        else:
+            path, alg_name = sys.argv[1], "fck4sha2"
+        walk(path, sys.stdout, alg_name)
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pragma: no cover

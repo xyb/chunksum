@@ -18,11 +18,11 @@ def parse_line(line):
      'checksum': 'sum2',
      'chunks': [('abcd', 10)],
      'path': './file1'}
-    >>> pprint(parse_line('sum3  ./file2  fck0sha2!bad:20,beef:30'))
+    >>> pprint(parse_line('sum3  ./long  file name  fck0sha2!bad:20,beef:30'))
     {'alg_name': 'fck0sha2',
      'checksum': 'sum3',
      'chunks': [('bad', 20), ('beef', 30)],
-     'path': './file2'}
+     'path': './long  file name'}
     """
     items = line.split("  ")
     checksum = items[0]
