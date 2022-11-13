@@ -39,6 +39,11 @@ jobs:
           source .venv/bin/activate
           make coverage
 
+      - name: Send coverage report to codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+
   lint:
     name: pre-commit
     runs-on: ubuntu-latest
