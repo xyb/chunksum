@@ -6,11 +6,13 @@ from hashlib import sha256
 from os.path import getsize
 from os.path import join
 
-from fastcdc.const import AVERAGE_MIN
 from tqdm.auto import tqdm
 from tqdm.utils import CallbackIOWrapper
 
 from .cdc import Chunker
+from .chunksize import GIGA
+from .chunksize import KILO
+from .chunksize import MEGA
 
 
 def iter_file_content(file, size=1024):
@@ -39,74 +41,6 @@ def iter_file_content_progress(file, path, size=1024):
     ) as t:
         fobj = CallbackIOWrapper(t.update, file, "read")
         yield from iter_file_content(fobj, size)
-
-
-class ChunkSizeError(Exception):
-    ...
-
-
-class ChunkSizeTooSmall(ChunkSizeError):
-    ...
-
-
-class ChunkSizeAlign(ChunkSizeError):
-    ...
-
-
-class ChunkSize:
-    """
-    >>> ChunkSize(1024)
-    ChunkSize<1024>
-    >>> ChunkSize(1)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    Traceback (most recent call last):
-      ...
-    chunksum.chunksum.ChunkSizeError: chunk size too small: 1
-    >>> ChunkSize(1024 + 1)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    Traceback (most recent call last):
-      ...
-    chunksum.chunksum.ChunkSizeError: chunk size should be a multiple of 4, but 1025 % 5 = 1
-    """  # noqa: E501
-
-    def __init__(self, avg_bytes=AVERAGE_MIN):
-        if (avg_bytes) < AVERAGE_MIN:
-            raise ChunkSizeError(f"chunk size too small: {avg_bytes}")
-        if avg_bytes % 4 != 0:
-            raise ChunkSizeError(
-                "chunk size should be a multiple of 4, "
-                "but {} % 5 = {}".format(
-                    avg_bytes,
-                    avg_bytes % 4,
-                ),
-            )
-        self.avg = avg_bytes
-        self.min = avg_bytes / 4
-        self.max = avg_bytes * 4
-
-    def __repr__(self):
-        """
-        >>> ChunkSize(64 * 1024)
-        ChunkSize<65536>
-        """
-        return f"ChunkSize<{self.avg}>"
-
-    def __mul__(self, x):
-        """
-        >>> ChunkSize(1024) * 64
-        ChunkSize<65536>
-        """
-        return ChunkSize(self.avg * x)
-
-    def __rmul__(self, x):
-        """
-        >>> 2 * ChunkSize(1024)
-        ChunkSize<2048>
-        """
-        return ChunkSize(self.avg * x)
-
-
-KILO = ChunkSize(1024)  # 1KB
-MEGA = KILO * 1024  # 1MB
-GIGA = MEGA * 1024  # 1GB
 
 
 def get_chunker(size_name="", avg=1024, min=256, max=4096):
