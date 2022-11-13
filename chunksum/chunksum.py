@@ -184,6 +184,13 @@ def get_hasher(name):
         raise Exception(f"unsupported hash: {name}")
 
 
+def hash_digest_size(data, hasher_name):
+    size = len(data)
+    h = get_hasher(hasher_name)
+    h.update(data)
+    return (h.digest(), size)
+
+
 def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0, hash="sha2"):
     """
 
@@ -216,19 +223,13 @@ def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0, hash="sha2"):
     else:
         iter_ = iter_file_content(file, size=buffer_size)
 
-    def gen_item(data, hasher_name):
-        size = len(data)
-        h = get_hasher(hasher_name)
-        h.update(data)
-        return (h.digest(), size)
-
     hasher_name = alg_name[len("fck0") :] or hash
     for data in iter_:
         chunker.update(data)
         for chunk in chunker.chunks:
-            result.append(gen_item(chunk, hasher_name))
+            result.append(hash_digest_size(chunk, hasher_name))
     if chunker.tail:
-        result.append(gen_item(chunker.tail, hasher_name))
+        result.append(hash_digest_size(chunker.tail, hasher_name))
     return result
 
 
@@ -238,9 +239,8 @@ def list_hash(digests, hasher_name="sha2"):
     b'\xbe\xf5...\xd9<G!'
     """
     plain = b"".join(digests)
-    h = get_hasher(hasher_name)
-    h.update(plain)
-    return h.digest()
+    digest, _ = hash_digest_size(plain, hasher_name)
+    return digest
 
 
 def format_a_result(path, result, alg_name):
