@@ -37,7 +37,7 @@ jobs:
       - name: run tests
         run: |
           source .venv/bin/activate
-          pytest --doctest-modules --last-failed --durations=3
+          make coverage
 
   lint:
     name: pre-commit
