@@ -17,10 +17,17 @@ from .chunksize import MEGA
 
 
 def iter_file_content(file, size=1024):
+    if hasattr(file, "name"):
+        yield from _iter_file_content_progress(file, file.name, size=size)
+    else:
+        yield from _iter_file_content(file, size=size)
+
+
+def _iter_file_content(file, size=1024):
     """
     >>> import io
     >>> stream = io.StringIO('abcdefg')
-    >>> list(iter_file_content(stream, size=3))
+    >>> list(_iter_file_content(stream, size=3))
     ['abc', 'def', 'g']
     """
 
@@ -31,7 +38,7 @@ def iter_file_content(file, size=1024):
         yield content
 
 
-def iter_file_content_progress(file, path, size=1024):
+def _iter_file_content_progress(file, path, size=1024):
     with tqdm(
         total=getsize(path),
         desc=path,
@@ -41,7 +48,7 @@ def iter_file_content_progress(file, path, size=1024):
         delay=1.0,
     ) as t:
         fobj = CallbackIOWrapper(t.update, file, "read")
-        yield from iter_file_content(fobj, size)
+        yield from _iter_file_content(fobj, size)
 
 
 def get_chunker(size_name="", avg=1024, min=256, max=4096):
@@ -138,7 +145,7 @@ def hash_digest_size(data, hasher_name):
     return (h.digest(), size)
 
 
-def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0, hash="sha2"):
+def compute_file(file, alg_name="fck4sha2"):
     """
 
     >>> import io
@@ -149,26 +156,12 @@ def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0, hash="sha2"):
     (b'\\xfb...\\xd3', 65536)
     (b'\\xfb...\\xd3', 65536)
     (b'tG...\\xfe', 28928)
-    >>> stream = io.BytesIO(b'abcdefgh' * 2000)
-    >>> result = compute_file(stream, alg_name='', avg=1024, min=256, max=4096)
-    >>> for i in result:
-    ...     print(i)
-    (b'\\xbfb...\\x10T', 4096)
-    (b'\\xbfb...\\x10T', 4096)
-    (b'\\xbfb...\\x10T', 4096)
-    (b't\\x87...\\xcft', 3712)
     """
-    if alg_name:
-        chunk_size_name = alg_name[2:4]
-        chunker = get_chunker(chunk_size_name)
-    else:
-        chunker = get_chunker(avg=avg, min=min, max=max)
+    chunk_size_name = alg_name[2:4]
+    chunker = get_chunker(chunk_size_name)
     result = []
     buffer_size = 4 * 1024 * 1024
-    if hasattr(file, "name"):
-        iter_ = iter_file_content_progress(file, file.name, size=buffer_size)
-    else:
-        iter_ = iter_file_content(file, size=buffer_size)
+    iter_ = iter_file_content(file, size=buffer_size)
 
     hasher_name = alg_name[len("fck0") :] or hash
     for data in iter_:
