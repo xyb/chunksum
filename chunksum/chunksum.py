@@ -51,6 +51,13 @@ def _iter_file_content_progress(file, path, size=1024):
         yield from _iter_file_content(fobj, size)
 
 
+UNITS = {
+    "k": KILO,
+    "m": MEGA,
+    "g": GIGA,
+}
+
+
 def get_chunker(size_name="", avg=1024, min=256, max=4096):
     """
     >>> get_chunker('k0')
@@ -64,23 +71,24 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
     >>> get_chunker('x1')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: wrong unit of chunk size: x
+    Exception: wrong unit or power of chunk size: x1
     >>> get_chunker('ka')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: chunk size is not a number: a
+    Exception: wrong unit or power of chunk size: ka
     """
-    if size_name and len(size_name) == 2:
-        unit, power = size_name
-        coefficient = {"k": KILO, "m": MEGA, "g": GIGA}.get(unit.lower())
-        if not coefficient:
-            raise Exception(f"wrong unit of chunk size: {unit}")
-        if not power.isdigit():
-            raise Exception(f"chunk size is not a number: {power}")
-        size = coefficient * 2 ** int(power)
-        return Chunker(size.avg, size.min, size.max)
-    else:
-        return Chunker(avg, min, max)
+    pattern = r"(?P<unit>k|m|g)(?P<power>\d)"
+    mo = re.match(pattern, size_name, flags=re.IGNORECASE)
+    if not mo:
+        raise Exception(f"wrong unit or power of chunk size: {size_name}")
+
+    groups = mo.groupdict()
+    unit = groups["unit"]
+    power = groups["power"]
+
+    coefficient = UNITS[unit.lower()]
+    size = coefficient * 2 ** int(power)
+    return Chunker(size.avg, size.min, size.max)
 
 
 HASH_FUNCTIONS = {
