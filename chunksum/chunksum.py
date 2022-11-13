@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import re
 from hashlib import blake2b
 from hashlib import blake2s
 from hashlib import sha256
@@ -75,6 +76,13 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
         return Chunker(avg, min, max)
 
 
+HASH_FUNCTIONS = {
+    "sha2": sha256,
+    "blake2b": blake2b,
+    "blake2s": blake2s,
+}
+
+
 def get_hasher(name):
     """
     >>> get_hasher('sha2')
@@ -88,34 +96,39 @@ def get_hasher(name):
     >>> get_hasher('badname')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: unsupported hash: badname
+    Exception: unsupported hash name: badname
     >>> get_hasher('blake2x')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: unsupported blake2 hash: blake2x
+    Exception: unsupported hash name: blake2x
     >>> get_hasher('blake2')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: unsupported blake2 hash: blake2
+    Exception: unsupported hash name: blake2
+    >>> get_hasher('sha256')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    Exception: unsupported hash name: sha256
     """
     name = name.lower()
-    if name == "sha2":
-        return sha256()
-    elif name.startswith("blake2"):
-        prefix = name[: len("blake2b")]
-        digest_size = name[len("blake2b") :]
-        if prefix == "blake2b":
-            func = blake2b
-        elif prefix == "blake2s":
-            func = blake2s
-        else:
-            raise Exception(f"unsupported blake2 hash: {prefix}")
-        if digest_size:
-            return func(digest_size=int(digest_size))
-        else:
-            return func()
+    pattern = r"(?P<hash_name>sha2|blake2b|blake2s)(?P<digest_size>\d+)?"
+
+    mo = re.match(pattern, name)
+    if not mo:
+        raise Exception(f"unsupported hash name: {name}")
+
+    groups = mo.groupdict()
+    hash_name = groups["hash_name"]
+    digest_size = groups["digest_size"]
+
+    if hash_name == "sha2" and digest_size:
+        raise Exception(f"unsupported hash name: {name}")
+
+    func = HASH_FUNCTIONS[hash_name]
+    if digest_size:
+        return func(digest_size=int(digest_size))
     else:
-        raise Exception(f"unsupported hash: {name}")
+        return func()
 
 
 def hash_digest_size(data, hasher_name):
