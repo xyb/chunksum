@@ -16,6 +16,19 @@ from .chunksize import KILO
 from .chunksize import MEGA
 
 
+UNITS = {
+    "k": KILO,
+    "m": MEGA,
+    "g": GIGA,
+}
+
+HASH_FUNCTIONS = {
+    "sha2": sha256,
+    "blake2b": blake2b,
+    "blake2s": blake2s,
+}
+
+
 def iter_file_content(file, size=1024):
     if hasattr(file, "name"):
         yield from _iter_file_content_progress(file, file.name, size=size)
@@ -51,13 +64,6 @@ def _iter_file_content_progress(file, path, size=1024):
         yield from _iter_file_content(fobj, size)
 
 
-UNITS = {
-    "k": KILO,
-    "m": MEGA,
-    "g": GIGA,
-}
-
-
 def get_chunker(size_name="", avg=1024, min=256, max=4096):
     """
     >>> get_chunker('k0')
@@ -89,13 +95,6 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
     coefficient = UNITS[unit.lower()]
     size = coefficient * 2 ** int(power)
     return Chunker(size.avg, size.min, size.max)
-
-
-HASH_FUNCTIONS = {
-    "sha2": sha256,
-    "blake2b": blake2b,
-    "blake2s": blake2s,
-}
 
 
 def get_hasher(name):
