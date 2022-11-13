@@ -17,7 +17,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/xyb/chunksum/issues"
 
 [tool.poetry.scripts]
-chunksum = 'chunksum.chunksum:main'
+chunksum = 'chunksum.cli:main'
 
 [tool.poetry.dependencies]
 python = "^3.7"

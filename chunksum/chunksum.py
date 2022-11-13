@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import re
 from hashlib import blake2b
 from hashlib import blake2s
 from hashlib import sha256
@@ -15,11 +16,31 @@ from .chunksize import KILO
 from .chunksize import MEGA
 
 
+UNITS = {
+    "k": KILO,
+    "m": MEGA,
+    "g": GIGA,
+}
+
+HASH_FUNCTIONS = {
+    "sha2": sha256,
+    "blake2b": blake2b,
+    "blake2s": blake2s,
+}
+
+
 def iter_file_content(file, size=1024):
+    if hasattr(file, "name"):
+        yield from _iter_file_content_progress(file, file.name, size=size)
+    else:
+        yield from _iter_file_content(file, size=size)
+
+
+def _iter_file_content(file, size=1024):
     """
     >>> import io
     >>> stream = io.StringIO('abcdefg')
-    >>> list(iter_file_content(stream, size=3))
+    >>> list(_iter_file_content(stream, size=3))
     ['abc', 'def', 'g']
     """
 
@@ -30,7 +51,7 @@ def iter_file_content(file, size=1024):
         yield content
 
 
-def iter_file_content_progress(file, path, size=1024):
+def _iter_file_content_progress(file, path, size=1024):
     with tqdm(
         total=getsize(path),
         desc=path,
@@ -40,7 +61,7 @@ def iter_file_content_progress(file, path, size=1024):
         delay=1.0,
     ) as t:
         fobj = CallbackIOWrapper(t.update, file, "read")
-        yield from iter_file_content(fobj, size)
+        yield from _iter_file_content(fobj, size)
 
 
 def get_chunker(size_name="", avg=1024, min=256, max=4096):
@@ -56,23 +77,24 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
     >>> get_chunker('x1')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: wrong unit of chunk size: x
+    Exception: wrong unit or power of chunk size: x1
     >>> get_chunker('ka')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: chunk size is not a number: a
+    Exception: wrong unit or power of chunk size: ka
     """
-    if size_name and len(size_name) == 2:
-        unit, power = size_name
-        coefficient = {"k": KILO, "m": MEGA, "g": GIGA}.get(unit.lower())
-        if not coefficient:
-            raise Exception(f"wrong unit of chunk size: {unit}")
-        if not power.isdigit():
-            raise Exception(f"chunk size is not a number: {power}")
-        size = coefficient * 2 ** int(power)
-        return Chunker(size.avg, size.min, size.max)
-    else:
-        return Chunker(avg, min, max)
+    pattern = r"(?P<unit>k|m|g)(?P<power>\d)"
+    mo = re.match(pattern, size_name, flags=re.IGNORECASE)
+    if not mo:
+        raise Exception(f"wrong unit or power of chunk size: {size_name}")
+
+    groups = mo.groupdict()
+    unit = groups["unit"]
+    power = groups["power"]
+
+    coefficient = UNITS[unit.lower()]
+    size = coefficient * 2 ** int(power)
+    return Chunker(size.avg, size.min, size.max)
 
 
 def get_hasher(name):
@@ -88,34 +110,39 @@ def get_hasher(name):
     >>> get_hasher('badname')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: unsupported hash: badname
+    Exception: unsupported hash name: badname
     >>> get_hasher('blake2x')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: unsupported blake2 hash: blake2x
+    Exception: unsupported hash name: blake2x
     >>> get_hasher('blake2')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
       ...
-    Exception: unsupported blake2 hash: blake2
+    Exception: unsupported hash name: blake2
+    >>> get_hasher('sha256')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Traceback (most recent call last):
+      ...
+    Exception: unsupported hash name: sha256
     """
     name = name.lower()
-    if name == "sha2":
-        return sha256()
-    elif name.startswith("blake2"):
-        prefix = name[: len("blake2b")]
-        digest_size = name[len("blake2b") :]
-        if prefix == "blake2b":
-            func = blake2b
-        elif prefix == "blake2s":
-            func = blake2s
-        else:
-            raise Exception(f"unsupported blake2 hash: {prefix}")
-        if digest_size:
-            return func(digest_size=int(digest_size))
-        else:
-            return func()
+    pattern = r"(?P<hash_name>sha2|blake2b|blake2s)(?P<digest_size>\d+)?"
+
+    mo = re.match(pattern, name)
+    if not mo:
+        raise Exception(f"unsupported hash name: {name}")
+
+    groups = mo.groupdict()
+    hash_name = groups["hash_name"]
+    digest_size = groups["digest_size"]
+
+    if hash_name == "sha2" and digest_size:
+        raise Exception(f"unsupported hash name: {name}")
+
+    func = HASH_FUNCTIONS[hash_name]
+    if digest_size:
+        return func(digest_size=int(digest_size))
     else:
-        raise Exception(f"unsupported hash: {name}")
+        return func()
 
 
 def hash_digest_size(data, hasher_name):
@@ -125,7 +152,7 @@ def hash_digest_size(data, hasher_name):
     return (h.digest(), size)
 
 
-def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0, hash="sha2"):
+def compute_file(file, alg_name="fck4sha2"):
     """
 
     >>> import io
@@ -136,26 +163,12 @@ def compute_file(file, alg_name="fck4sha2", avg=0, min=0, max=0, hash="sha2"):
     (b'\\xfb...\\xd3', 65536)
     (b'\\xfb...\\xd3', 65536)
     (b'tG...\\xfe', 28928)
-    >>> stream = io.BytesIO(b'abcdefgh' * 2000)
-    >>> result = compute_file(stream, alg_name='', avg=1024, min=256, max=4096)
-    >>> for i in result:
-    ...     print(i)
-    (b'\\xbfb...\\x10T', 4096)
-    (b'\\xbfb...\\x10T', 4096)
-    (b'\\xbfb...\\x10T', 4096)
-    (b't\\x87...\\xcft', 3712)
     """
-    if alg_name:
-        chunk_size_name = alg_name[2:4]
-        chunker = get_chunker(chunk_size_name)
-    else:
-        chunker = get_chunker(avg=avg, min=min, max=max)
+    chunk_size_name = alg_name[2:4]
+    chunker = get_chunker(chunk_size_name)
     result = []
     buffer_size = 4 * 1024 * 1024
-    if hasattr(file, "name"):
-        iter_ = iter_file_content_progress(file, file.name, size=buffer_size)
-    else:
-        iter_ = iter_file_content(file, size=buffer_size)
+    iter_ = iter_file_content(file, size=buffer_size)
 
     hasher_name = alg_name[len("fck0") :] or hash
     for data in iter_:
