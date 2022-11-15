@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "chunksum"
-version = "0.4.0"
+version = "0.5.0"
 description = "Print FastCDC rolling hash chunks and checksums."
 authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
 license = "MIT"
@@ -9,7 +9,7 @@ homepage = "https://github.com/xyb/chunksum"
 repository = "https://github.com/xyb/chunksum"
 classifiers = [
     "Environment :: Console",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Topic :: Utilities",
 ]
 
