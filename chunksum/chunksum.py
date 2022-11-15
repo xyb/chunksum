@@ -205,10 +205,25 @@ def format_a_result(path, result, alg_name):
     return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
 
 
-def walk(target, output_file, alg_name="fck4sha2"):
+def walk(target, output_file, alg_name="fck4sha2", skip_func=None):
+    """
+    >>> import os.path
+    >>> import sys
+    >>> import tempfile
+    >>> dir = tempfile.TemporaryDirectory()
+    >>> path = os.path.join(dir.name, 'testfile')
+    >>> _ = open(path, 'wb').write(b'hello')
+    >>> walk(dir.name, sys.stdout)
+    9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
+
+    # skip files
+    >>> walk(dir.name, sys.stdout, skip_func=lambda x: x.endswith('testfile'))
+    """
     for root, dirs, files in os.walk(target):
         for file in sorted(files):
             path = join(root, file)
+            if skip_func and skip_func(path):
+                continue
             chunks = compute_file(open(path, "rb"), alg_name)
             print(
                 format_a_result(path, chunks, alg_name),
