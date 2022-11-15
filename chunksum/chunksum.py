@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import re
+import sys
 from hashlib import blake2b
 from hashlib import blake2s
 from hashlib import sha256
@@ -8,6 +9,7 @@ from os.path import getsize
 from os.path import join
 
 from tqdm.auto import tqdm
+from tqdm.utils import _screen_shape_wrapper
 from tqdm.utils import CallbackIOWrapper
 
 from .cdc import Chunker
@@ -51,10 +53,39 @@ def _iter_file_content(file, size=1024):
         yield content
 
 
+def get_screen_width(fd=sys.stdout):
+    """
+    >>> get_screen_width(None)
+    (None, None)
+    """
+    dynamic = _screen_shape_wrapper()
+    return dynamic(fd)
+
+
+def get_tqdm_limited_desc(desc, fd=sys.stdout):
+    """
+    >>> get_tqdm_limited_desc(str(list(range(100))), None)
+    '...93, 94, 95, 96, 97, 98, 99]'
+    """
+    default_screen_width = 80
+    reserve_size_for_tqdm = 50
+
+    width = get_screen_width()
+    if width and width[0]:
+        cols = width[0]  # pragma: no cover
+    else:
+        cols = default_screen_width
+    desc_limit = cols - reserve_size_for_tqdm
+    if len(desc) > desc_limit:
+        return f"...{desc[3 - desc_limit: ]}"
+    else:
+        return desc
+
+
 def _iter_file_content_progress(file, path, size=1024):
     with tqdm(
         total=getsize(path),
-        desc=path,
+        desc=get_tqdm_limited_desc(path),
         unit="B",
         unit_scale=True,
         unit_divisor=1024,
