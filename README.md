@@ -9,9 +9,23 @@
 Print FastCDC rolling hash chunks and checksums.
 
 ```
-Usage: chunksum <dir> [<alg_name>] [<prev_chunksums_file>]
+usage: chunksum [-h] [-n ALG_NAME] [-f CHUNKSUMS_FILE] [-i INCR_FILE] dir
 
-alg_name:
+Print FastCDC rolling hash chunks and checksums.
+
+positional arguments:
+  dir                   directory
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n ALG_NAME, --alg-name ALG_NAME
+                        chunksum algorithm name.
+  -f CHUNKSUMS_FILE, --chunksums-file CHUNKSUMS_FILE
+                        chunksum file path, `-' for standard output.
+  -i INCR_FILE, --incr-file INCR_FILE
+                        incremental updates file path
+
+alg-name:
   Format "fc[k|m|g][0-9][sha2|blake2b|blake2s][32]".
 
   For example, "fck4sha2", means using FastCDC("fc") with an
@@ -27,17 +41,16 @@ alg_name:
 
   (default: fck4sha2)
 
-prev_chunksums_file:
+chunksums-file and incr-file:
   You can specify the previous chunksums file if you want to
   resume a previous check, or if you want to find the incremental
   updates (new files) of the directory.
-
 
 Examples:
 
   $ chunksum /etc > ~/etc.chunksums
 
-  $ chunksum ~/Videos fcm4blake2b32 > ~/Videos/chunksums
+  $ chunksum -n fcm4blake2b32 -f ~/Videos/chunksums ~/Videos
 
-  $ chunksum ~/Videos fcm4blake2b32 ~/chunksums > ~/chunksums.incr
+  $ chunksum -n fcm4blake2b32 -f ~/chunksums -i ~/chunksums.incr ~/Videos
 ```

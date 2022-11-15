@@ -289,6 +289,7 @@ def walk(target, output_file, alg_name="fck4sha2", skip_func=None, total=0):
 
     for path in sorted_walk(target):
         if skip_func and skip_func(path):
+            t.update(getsize(path))
             continue
         chunks = compute_file(open(path, "rb"), alg_name)
         print(

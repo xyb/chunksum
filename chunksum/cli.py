@@ -1,17 +1,14 @@
+import argparse
 import sys
+from os.path import exists
 
 from .chunksum import get_total_size
 from .chunksum import walk
 from .parser import parse_chunksums
 
-
-def help():
-    print(
-        """Print FastCDC rolling hash chunks and checksums.
-
-Usage: {cmd} <dir> [<alg_name>] [<prev_chunksums_file>]
-
-alg_name:
+command_desc = "Print FastCDC rolling hash chunks and checksums."
+command_long_desc = """
+alg-name:
   Format "fc[k|m|g][0-9][sha2|blake2b|blake2s][32]".
 
   For example, "fck4sha2", means using FastCDC("fc") with an
@@ -27,7 +24,7 @@ alg_name:
 
   (default: fck4sha2)
 
-prev_chunksums_file:
+chunksums-file and incr-file:
   You can specify the previous chunksums file if you want to
   resume a previous check, or if you want to find the incremental
   updates (new files) of the directory.
@@ -35,15 +32,12 @@ prev_chunksums_file:
 
 Examples:
 
-  $ {cmd} /etc > ~/etc.chunksums
+  $ %(prog)s /etc > ~/etc.chunksums
 
-  $ {cmd} ~/Videos fcm4blake2b32 > ~/Videos/chunksums
+  $ %(prog)s -n fcm4blake2b32 -f ~/Videos/chunksums ~/Videos
 
-  $ {cmd} ~/Videos fcm4blake2b32 ~/chunksums > ~/chunksums.incr
-""".format(
-            cmd=sys.argv[0],
-        ),
-    )
+  $ %(prog)s -n fcm4blake2b32 -f ~/chunksums -i ~/chunksums.incr ~/Videos
+"""
 
 
 def included_in_chunksums(chunksums_file):
@@ -59,10 +53,13 @@ def included_in_chunksums(chunksums_file):
 def main():
     """
     # help
-    >>> sys.argv = ['chunksup']
-    >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    >>> sys.argv = ['chunksum', '-h']
+    >>> try:
+    ...   main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ... except:
+    ...   pass
+    usage: chunksum ...
     Print ...
-    Usage: ...
     ...
 
     # compute chunksums
@@ -71,39 +68,91 @@ def main():
     >>> dir = tempfile.TemporaryDirectory()
     >>> file1 = os.path.join(dir.name, 'testfile')
     >>> _ = open(file1, 'wb').write(b'hello')
-    >>> sys.argv = ['chunksum', dir.name]
+    >>> sys.argv = ['chunksum', '-f', '-', dir.name]  # output to stdout
     >>> main()
     9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
-    >>> sys.argv = ['chunksum', dir.name, 'fcm0blake2b32']
+    >>> sys.argv = ['chunksum', '-n', 'fcm0blake2b32', '-f', '-', dir.name]
     >>> main()
     901c...ce59  .../testfile  fcm0blake2b32!324d...72cf:5
-    >>> sys.argv = ['chunksum', dir.name, 'fcm0blake2s']
+    >>> sys.argv = ['chunksum', '-n', 'fcm0blake2s', '-f', '-', dir.name]
     >>> main()
     8d95...5ee5  .../testfile  fcm0blake2s!1921...ca25:5
-
-    # skip files
-    >>> file2 = os.path.join(dir.name, 'newfile')
-    >>> _ = open(file2, 'wb').write(b'hello')
-    >>> chunksums = tempfile.NamedTemporaryFile()
-    >>> _ = open(chunksums.name, 'w').write(f'sum  {file1}  fck4sha2!')
-    >>> sys.argv = ['chunksum', dir.name, 'fck4sha2', chunksums.name]
+    >>> dir2 = tempfile.TemporaryDirectory()
+    >>> chunksums = os.path.join(dir2.name, 'chunksums')
+    >>> sys.argv = ['chunksum', '-f', chunksums, dir.name]  # output to a file
     >>> main()
-    9595...3d50  .../newfile  fck4sha2!2cf2...9824:5
+
+    # incremental / skip file
+    >>> chunksums = tempfile.NamedTemporaryFile()
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, dir.name]
+    >>> main()
+    >>> file2 = os.path.join(dir.name, 'newfile')
+    >>> _ = open(file2, 'wb').write(b'world')
+    >>> incr = chunksums.name + '.incr'
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-i', '-', dir.name]
+    >>> main()
+    63...06  .../newfile  fck4sha2!48...a7:5
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-i', incr, dir.name]
+    >>> main()
+    >>> open(incr).read().strip()
+    '63...06  .../newfile  fck4sha2!48...a7:5'
+
+    # resume
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, dir.name]
+    >>> main()
+    >>> for line in open(chunksums.name).readlines():
+    ...   print(line.strip())
+    95...50  .../testfile  fck4sha2!2c...24:5
+    63...06  .../newfile  fck4sha2!48...a7:5
     """
-    if len(sys.argv) == 1:
-        help()
-        return
+    parser = argparse.ArgumentParser(
+        description=command_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=command_long_desc,
+    )
+    parser.add_argument(
+        "-n",
+        "--alg-name",
+        default="fck4sha2",
+        help="chunksum algorithm name.",
+    )
+    parser.add_argument(
+        "-f",
+        "--chunksums-file",
+        default="chunksums",
+        help="chunksum file path, `-' for standard output.",
+    )
+    parser.add_argument(
+        "-i",
+        "--incr-file",
+        help="incremental updates file path",
+    )
+    parser.add_argument("dir", nargs=1, help="directory")
+    args = parser.parse_args()
 
     skip_func = None
-    if len(sys.argv) > 3:
-        path, alg_name, prev_version_chunksums = sys.argv[1:4]
-        skip_func = included_in_chunksums(open(prev_version_chunksums))
-    if len(sys.argv) > 2:
-        path, alg_name = sys.argv[1:3]
+    if exists(args.chunksums_file):
+        skip_func = included_in_chunksums(open(args.chunksums_file))
+
+    if args.chunksums_file == "-":
+        output_file = sys.stdout
+    elif args.incr_file == "-":
+        output_file = sys.stdout
+    elif args.incr_file:
+        output_file = open(args.incr_file, "a")
+    elif exists(args.chunksums_file):
+        output_file = open(args.chunksums_file, "a")
     else:
-        path, alg_name = sys.argv[1], "fck4sha2"
-    total = get_total_size(path)
-    walk(path, sys.stdout, alg_name, skip_func=skip_func, total=total)
+        output_file = open(args.chunksums_file, "w")
+
+    total = get_total_size(args.dir[0])
+    walk(
+        args.dir[0],
+        output_file,
+        args.alg_name,
+        skip_func=skip_func,
+        total=total,
+    )
 
 
 if __name__ == "__main__":
