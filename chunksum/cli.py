@@ -1,5 +1,6 @@
 import sys
 
+from .chunksum import get_total_size
 from .chunksum import walk
 from .parser import parse_chunksums
 
@@ -101,7 +102,8 @@ def main():
         path, alg_name = sys.argv[1:3]
     else:
         path, alg_name = sys.argv[1], "fck4sha2"
-    walk(path, sys.stdout, alg_name, skip_func=skip_func)
+    total = get_total_size(path)
+    walk(path, sys.stdout, alg_name, skip_func=skip_func, total=total)
 
 
 if __name__ == "__main__":

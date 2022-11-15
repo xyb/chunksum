@@ -236,6 +236,26 @@ def format_a_result(path, result, alg_name):
     return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
 
 
+def get_total_size(dir):
+    """
+    >>> import tempfile
+    >>> import os.path
+    >>> dir = tempfile.TemporaryDirectory()
+    >>> file1 = os.path.join(dir.name, 'testfile')
+    >>> _ = open(file1, 'wb').write(b'hello')
+    >>> get_total_size(dir.name)
+    5
+    """
+    total = 0
+    with tqdm(desc="get total file size", delay=0.5) as t:
+        for root, dirs, files in os.walk(dir):
+            for file in files:
+                path = join(root, file)
+                total += getsize(path)
+                t.update()
+    return total
+
+
 def sorted_walk(dir):
     for root, dirs, files in os.walk(dir):
         for file in sorted(files):
@@ -244,7 +264,7 @@ def sorted_walk(dir):
         dirs.sort()
 
 
-def walk(target, output_file, alg_name="fck4sha2", skip_func=None):
+def walk(target, output_file, alg_name="fck4sha2", skip_func=None, total=0):
     """
     >>> import os.path
     >>> import sys
@@ -259,6 +279,14 @@ def walk(target, output_file, alg_name="fck4sha2", skip_func=None):
     >>> walk(dir.name, sys.stdout, skip_func=lambda x: x.endswith('testfile'))
     """
 
+    t = tqdm(
+        desc="chunksum",
+        total=total,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+    )
+
     for path in sorted_walk(target):
         if skip_func and skip_func(path):
             continue
@@ -268,3 +296,4 @@ def walk(target, output_file, alg_name="fck4sha2", skip_func=None):
             file=output_file,
             flush=True,
         )
+        t.update(getsize(path))
