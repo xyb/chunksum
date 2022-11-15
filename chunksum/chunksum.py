@@ -205,6 +205,14 @@ def format_a_result(path, result, alg_name):
     return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
 
 
+def sorted_walk(dir):
+    for root, dirs, files in os.walk(dir):
+        for file in sorted(files):
+            path = join(root, file)
+            yield path
+        dirs.sort()
+
+
 def walk(target, output_file, alg_name="fck4sha2", skip_func=None):
     """
     >>> import os.path
@@ -220,14 +228,7 @@ def walk(target, output_file, alg_name="fck4sha2", skip_func=None):
     >>> walk(dir.name, sys.stdout, skip_func=lambda x: x.endswith('testfile'))
     """
 
-    def _walk():
-        for root, dirs, files in os.walk(target):
-            for file in sorted(files):
-                path = join(root, file)
-                yield path
-            dirs.sort()
-
-    for path in _walk():
+    for path in sorted_walk(target):
         if skip_func and skip_func(path):
             continue
         chunks = compute_file(open(path, "rb"), alg_name)
