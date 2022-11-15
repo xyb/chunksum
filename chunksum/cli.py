@@ -2,9 +2,9 @@ import argparse
 import sys
 from os.path import exists
 
-from .chunksum import get_total_size
 from .chunksum import walk
 from .parser import parse_chunksums
+from .utils import get_total_size
 
 command_desc = "Print FastCDC rolling hash chunks and checksums."
 command_long_desc = """

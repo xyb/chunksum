@@ -1,21 +1,16 @@
 #!/usr/bin/env python
-import os
 import re
-import sys
-from hashlib import blake2b
-from hashlib import blake2s
-from hashlib import sha256
 from os.path import getsize
-from os.path import join
 
 from tqdm.auto import tqdm
-from tqdm.utils import _screen_shape_wrapper
-from tqdm.utils import CallbackIOWrapper
 
 from .cdc import Chunker
 from .chunksize import GIGA
 from .chunksize import KILO
 from .chunksize import MEGA
+from .hash import hash_digest_size
+from .iter import iter_file_content
+from .utils import sorted_walk
 
 
 UNITS = {
@@ -23,76 +18,6 @@ UNITS = {
     "m": MEGA,
     "g": GIGA,
 }
-
-HASH_FUNCTIONS = {
-    "sha2": sha256,
-    "blake2b": blake2b,
-    "blake2s": blake2s,
-}
-
-
-def iter_file_content(file, size=1024):
-    if hasattr(file, "name"):
-        yield from _iter_file_content_progress(file, file.name, size=size)
-    else:
-        yield from _iter_file_content(file, size=size)
-
-
-def _iter_file_content(file, size=1024):
-    """
-    >>> import io
-    >>> stream = io.StringIO('abcdefg')
-    >>> list(_iter_file_content(stream, size=3))
-    ['abc', 'def', 'g']
-    """
-
-    while True:
-        content = file.read(size)
-        if not content:
-            break
-        yield content
-
-
-def get_screen_width(fd=sys.stdout):
-    """
-    >>> get_screen_width(None)
-    (None, None)
-    """
-    dynamic = _screen_shape_wrapper()
-    return dynamic(fd)
-
-
-def get_tqdm_limited_desc(desc, fd=sys.stdout):
-    """
-    >>> get_tqdm_limited_desc(str(list(range(100))), None)
-    '...93, 94, 95, 96, 97, 98, 99]'
-    """
-    default_screen_width = 80
-    reserve_size_for_tqdm = 50
-
-    width = get_screen_width()
-    if width and width[0]:
-        cols = width[0]  # pragma: no cover
-    else:
-        cols = default_screen_width
-    desc_limit = cols - reserve_size_for_tqdm
-    if len(desc) > desc_limit:
-        return f"...{desc[3 - desc_limit: ]}"
-    else:
-        return desc
-
-
-def _iter_file_content_progress(file, path, size=1024):
-    with tqdm(
-        total=getsize(path),
-        desc=get_tqdm_limited_desc(path),
-        unit="B",
-        unit_scale=True,
-        unit_divisor=1024,
-        delay=1.0,
-    ) as t:
-        fobj = CallbackIOWrapper(t.update, file, "read")
-        yield from _iter_file_content(fobj, size)
 
 
 def get_chunker(size_name="", avg=1024, min=256, max=4096):
@@ -126,61 +51,6 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
     coefficient = UNITS[unit.lower()]
     size = coefficient * 2 ** int(power)
     return Chunker(size.avg, size.min, size.max)
-
-
-def get_hasher(name):
-    """
-    >>> get_hasher('sha2')
-    <sha256 ...>
-    >>> get_hasher('blake2b')
-    <_blake2.blake2b ...>
-    >>> get_hasher('blake2b32')
-    <_blake2.blake2b ...>
-    >>> get_hasher('blake2s')
-    <_blake2.blake2s ...>
-    >>> get_hasher('badname')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    Traceback (most recent call last):
-      ...
-    Exception: unsupported hash name: badname
-    >>> get_hasher('blake2x')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    Traceback (most recent call last):
-      ...
-    Exception: unsupported hash name: blake2x
-    >>> get_hasher('blake2')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    Traceback (most recent call last):
-      ...
-    Exception: unsupported hash name: blake2
-    >>> get_hasher('sha256')  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    Traceback (most recent call last):
-      ...
-    Exception: unsupported hash name: sha256
-    """
-    name = name.lower()
-    pattern = r"(?P<hash_name>sha2|blake2b|blake2s)(?P<digest_size>\d+)?"
-
-    mo = re.match(pattern, name)
-    if not mo:
-        raise Exception(f"unsupported hash name: {name}")
-
-    groups = mo.groupdict()
-    hash_name = groups["hash_name"]
-    digest_size = groups["digest_size"]
-
-    if hash_name == "sha2" and digest_size:
-        raise Exception(f"unsupported hash name: {name}")
-
-    func = HASH_FUNCTIONS[hash_name]
-    if digest_size:
-        return func(digest_size=int(digest_size))
-    else:
-        return func()
-
-
-def hash_digest_size(data, hasher_name):
-    size = len(data)
-    h = get_hasher(hasher_name)
-    h.update(data)
-    return (h.digest(), size)
 
 
 def compute_file(file, alg_name="fck4sha2"):
@@ -234,34 +104,6 @@ def format_a_result(path, result, alg_name):
     digest = list_hash([d for d, _ in result], hasher_name)
     # alg_name = 'fastcdc-{}-{}-{}-sha256'.format(AVG, MIN, MAX)
     return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
-
-
-def get_total_size(dir):
-    """
-    >>> import tempfile
-    >>> import os.path
-    >>> dir = tempfile.TemporaryDirectory()
-    >>> file1 = os.path.join(dir.name, 'testfile')
-    >>> _ = open(file1, 'wb').write(b'hello')
-    >>> get_total_size(dir.name)
-    5
-    """
-    total = 0
-    with tqdm(desc="get total file size", delay=0.5) as t:
-        for root, dirs, files in os.walk(dir):
-            for file in files:
-                path = join(root, file)
-                total += getsize(path)
-                t.update()
-    return total
-
-
-def sorted_walk(dir):
-    for root, dirs, files in os.walk(dir):
-        for file in sorted(files):
-            path = join(root, file)
-            yield path
-        dirs.sort()
 
 
 def walk(target, output_file, alg_name="fck4sha2", skip_func=None, total=0):
