@@ -219,15 +219,20 @@ def walk(target, output_file, alg_name="fck4sha2", skip_func=None):
     # skip files
     >>> walk(dir.name, sys.stdout, skip_func=lambda x: x.endswith('testfile'))
     """
-    for root, dirs, files in os.walk(target):
-        for file in sorted(files):
-            path = join(root, file)
-            if skip_func and skip_func(path):
-                continue
-            chunks = compute_file(open(path, "rb"), alg_name)
-            print(
-                format_a_result(path, chunks, alg_name),
-                file=output_file,
-                flush=True,
-            )
-        dirs.sort()
+
+    def _walk():
+        for root, dirs, files in os.walk(target):
+            for file in sorted(files):
+                path = join(root, file)
+                yield path
+            dirs.sort()
+
+    for path in _walk():
+        if skip_func and skip_func(path):
+            continue
+        chunks = compute_file(open(path, "rb"), alg_name)
+        print(
+            format_a_result(path, chunks, alg_name),
+            file=output_file,
+            flush=True,
+        )

@@ -8,7 +8,7 @@ def help():
     print(
         """Print FastCDC rolling hash chunks and checksums.
 
-Usage: {cmd} <dir> [<alg_name>] [<prev_chunksums_file>]> chunksums
+Usage: {cmd} <dir> [<alg_name>] [<prev_chunksums_file>]
 
 alg_name:
   Format "fc[k|m|g][0-9][sha2|blake2b|blake2s][32]".
@@ -91,16 +91,17 @@ def main():
     """
     if len(sys.argv) == 1:
         help()
+        return
+
+    skip_func = None
+    if len(sys.argv) > 3:
+        path, alg_name, prev_version_chunksums = sys.argv[1:4]
+        skip_func = included_in_chunksums(open(prev_version_chunksums))
+    if len(sys.argv) > 2:
+        path, alg_name = sys.argv[1:3]
     else:
-        skip_func = None
-        if len(sys.argv) > 3:
-            path, alg_name, prev_version_chunksums = sys.argv[1:4]
-            skip_func = included_in_chunksums(open(prev_version_chunksums))
-        if len(sys.argv) > 2:
-            path, alg_name = sys.argv[1:3]
-        else:
-            path, alg_name = sys.argv[1], "fck4sha2"
-        walk(path, sys.stdout, alg_name, skip_func=skip_func)
+        path, alg_name = sys.argv[1], "fck4sha2"
+    walk(path, sys.stdout, alg_name, skip_func=skip_func)
 
 
 if __name__ == "__main__":
