@@ -134,9 +134,7 @@ def main():
     if exists(args.chunksums_file):
         skip_func = included_in_chunksums(open(args.chunksums_file))
 
-    if args.chunksums_file == "-":
-        output_file = sys.stdout
-    elif args.incr_file == "-":
+    if args.chunksums_file == "-" or args.incr_file == "-":
         output_file = sys.stdout
     elif args.incr_file:
         output_file = open(args.incr_file, "a")
