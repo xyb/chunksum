@@ -11,6 +11,7 @@ from .chunksize import KILO
 from .chunksize import MEGA
 from .hash import hash_digest_size
 from .iter import iter_file_content
+from .utils import get_total_size
 from .utils import sorted_walk
 
 
@@ -107,15 +108,25 @@ def format_a_result(path, result, alg_name):
     return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
 
 
-def compute(paths, output_file, alg_name="fck4sha2", skip_func=None, total=0):
+def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
+    total = sum([get_total_size(path) for path in paths])
+
+    pbar = tqdm(
+        desc="chunksum",
+        total=total,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+    )
+
     for path in paths:
         if isdir(path):
-            walk(sorted_walk(path), output_file, alg_name, skip_func, total)
+            walk(sorted_walk(path), output_file, pbar, alg_name, skip_func)
         else:
-            walk([path], output_file, alg_name, skip_func, total)
+            walk([path], output_file, pbar, alg_name, skip_func)
 
 
-def walk(iter, output_file, alg_name="fck4sha2", skip_func=None, total=0):
+def walk(iter, output_file, progress_bar, alg_name="fck4sha2", skip_func=None):
     """
     # check a directory
     >>> import os.path
@@ -124,30 +135,22 @@ def walk(iter, output_file, alg_name="fck4sha2", skip_func=None, total=0):
     >>> dir = tempfile.TemporaryDirectory()
     >>> path = os.path.join(dir.name, 'testfile')
     >>> _ = open(path, 'wb').write(b'hello')
-    >>> walk(sorted_walk(dir.name), sys.stdout)
+    >>> walk(sorted_walk(dir.name), sys.stdout, None)
     9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
 
     # check a file
-    >>> walk([path], sys.stdout)
+    >>> walk([path], sys.stdout, None)
     9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
 
     # skip files
     >>> skip_func=lambda x: x.endswith('testfile')
-    >>> walk(sorted_walk(dir.name), sys.stdout, skip_func=skip_func)
+    >>> walk(sorted_walk(dir.name), sys.stdout, None, skip_func=skip_func)
     """
-
-    t = tqdm(
-        desc="chunksum",
-        total=total,
-        unit="B",
-        unit_scale=True,
-        unit_divisor=1024,
-    )
 
     for path in iter:
         size = getsize(path)
         if skip_func and skip_func(path):
-            t.update(size)
+            progress_bar and progress_bar.update(size)
             continue
         chunks = compute_file(open(path, "rb"), alg_name)
         print(
@@ -155,4 +158,4 @@ def walk(iter, output_file, alg_name="fck4sha2", skip_func=None, total=0):
             file=output_file,
             flush=True,
         )
-        t.update(size)
+        progress_bar and progress_bar.update(size)

@@ -4,7 +4,6 @@ from os.path import exists
 
 from .chunksum import compute
 from .parser import parse_chunksums
-from .utils import get_total_size
 
 command_desc = "Print FastCDC rolling hash chunks and checksums."
 command_long_desc = """
@@ -147,13 +146,11 @@ def main():
     else:
         output_file = open(args.chunksums_file, "w")
 
-    total = sum([get_total_size(path) for path in args.path])
     compute(
         args.path,
         output_file,
         args.alg_name,
         skip_func=skip_func,
-        total=total,
     )
 
 
