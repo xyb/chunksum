@@ -52,7 +52,7 @@ def included_in_chunksums(chunksums_file):
 def main():
     """
     # help
-    >>> sys.argv = ['chunksum', '-h']
+    >>> sys.argv = ['chunksum']
     >>> try:
     ...   main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     ... except:
@@ -126,6 +126,13 @@ def main():
     ...   print(line.strip())
     95...50  .../testfile  fck4sha2!2c...24:5
     63...06  .../newfile  fck4sha2!48...a7:5
+
+    # consumer mode
+    >>> pipe_in = io.BytesIO(b'hello')
+    >>> sys.stdin.buffer = pipe_in  # hack stdin
+    >>> sys.argv = ['chunksum', '-f', '-', '-x', '-']
+    >>> main()
+    95...50  <stdin>  fck4sha2!2c...24:5
     """
     parser = argparse.ArgumentParser(
         description=command_desc,

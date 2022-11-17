@@ -116,7 +116,7 @@ def iter_files(paths):
             for line in sys.stdin:
                 yield line.strip("\n")
         elif hasattr(sys.stdin, "buffer") and path == sys.stdin.buffer:
-            yield path
+            yield path  # pragma: no cover
         elif isdir(path):
             yield from sorted_walk(path)
         else:
@@ -124,6 +124,10 @@ def iter_files(paths):
 
 
 def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
+    """
+    >>> import sys
+    >>> compute([], sys.stdout)
+    """
     if not paths:
         return
 
