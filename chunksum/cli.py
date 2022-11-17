@@ -113,24 +113,24 @@ def main():
     95...50  .../testfile  fck4sha2!2c...24:5
     63...06  .../newfile  fck4sha2!48...a7:5
 
-    # read file or dir list from stdin
+    # read file or dir list from stdin, consumer mode
     >>> import io
     >>> pipe_in = io.StringIO(file1 + '\\n' + file2 + '\\n')
     >>> sys.stdin = pipe_in  # hack stdin
     >>> from . import chunksum
     >>> chunksum.sys.stdin = pipe_in
     >>> chunksums = tempfile.NamedTemporaryFile()
-    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-']
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-x', '-']
     >>> main()
     >>> for line in open(chunksums.name).readlines():
     ...   print(line.strip())
     95...50  .../testfile  fck4sha2!2c...24:5
     63...06  .../newfile  fck4sha2!48...a7:5
 
-    # consumer mode
+    # read content from stdin
     >>> pipe_in = io.BytesIO(b'hello')
     >>> sys.stdin.buffer = pipe_in  # hack stdin
-    >>> sys.argv = ['chunksum', '-f', '-', '-x', '-']
+    >>> sys.argv = ['chunksum', '-f', '-', '-']
     >>> main()
     95...50  <stdin>  fck4sha2!2c...24:5
     """
@@ -167,10 +167,10 @@ def main():
 
     paths = args.path
     if args.consumer_mode:
+        paths = [sys.stdin]
+    elif len(paths) == 1 and paths[0] == "-":
         # check input chunksums
         paths = [sys.stdin.buffer]
-    elif len(paths) == 1 and paths[0] == "-":
-        paths = [sys.stdin]
 
     if not paths:
         parser.print_help()
