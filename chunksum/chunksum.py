@@ -117,6 +117,7 @@ def compute(paths, output_file, alg_name="fck4sha2", skip_func=None, total=0):
 
 def walk(iter, output_file, alg_name="fck4sha2", skip_func=None, total=0):
     """
+    # check a directory
     >>> import os.path
     >>> import sys
     >>> import tempfile
@@ -124,6 +125,10 @@ def walk(iter, output_file, alg_name="fck4sha2", skip_func=None, total=0):
     >>> path = os.path.join(dir.name, 'testfile')
     >>> _ = open(path, 'wb').write(b'hello')
     >>> walk(sorted_walk(dir.name), sys.stdout)
+    9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
+
+    # check a file
+    >>> walk([path], sys.stdout)
     9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
 
     # skip files

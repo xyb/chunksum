@@ -82,6 +82,10 @@ def main():
     >>> sys.argv = ['chunksum', '-f', chunksums, dir.name]  # output to a file
     >>> main()
 
+    # compute a file
+    >>> sys.argv = ['chunksum', '-f', chunksums, file1]
+    >>> main()
+
     # incremental / skip file
     >>> chunksums = tempfile.NamedTemporaryFile()
     >>> sys.argv = ['chunksum', '-f', chunksums.name, dir.name]
