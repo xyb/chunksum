@@ -81,10 +81,6 @@ def main():
     >>> sys.argv = ['chunksum', '-f', chunksums, dir.name]  # output to a file
     >>> main()
 
-    # compute a file
-    >>> sys.argv = ['chunksum', '-f', chunksums, file1]
-    >>> main()
-
     # incremental / skip file
     >>> chunksums = tempfile.NamedTemporaryFile()
     >>> sys.argv = ['chunksum', '-f', chunksums.name, dir.name]
@@ -102,6 +98,29 @@ def main():
 
     # resume
     >>> sys.argv = ['chunksum', '-f', chunksums.name, dir.name]
+    >>> main()
+    >>> for line in open(chunksums.name).readlines():
+    ...   print(line.strip())
+    95...50  .../testfile  fck4sha2!2c...24:5
+    63...06  .../newfile  fck4sha2!48...a7:5
+
+    # compute files
+    >>> chunksums = tempfile.NamedTemporaryFile()
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, file1, file2]
+    >>> main()
+    >>> for line in open(chunksums.name).readlines():
+    ...   print(line.strip())
+    95...50  .../testfile  fck4sha2!2c...24:5
+    63...06  .../newfile  fck4sha2!48...a7:5
+
+    # read file or dir list from stdin
+    >>> import io
+    >>> pipe_in = io.StringIO(file1 + '\\n' + file2 + '\\n')
+    >>> sys.stdin = pipe_in  # hack stdin
+    >>> from . import chunksum
+    >>> chunksum.sys.stdin = pipe_in
+    >>> chunksums = tempfile.NamedTemporaryFile()
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-']
     >>> main()
     >>> for line in open(chunksums.name).readlines():
     ...   print(line.strip())
@@ -130,8 +149,12 @@ def main():
         "--incr-file",
         help="incremental updates file path",
     )
-    parser.add_argument("path", nargs="+", help="path to check")
+    parser.add_argument("path", nargs="*", help="path to check")
     args = parser.parse_args()
+
+    paths = args.path
+    if len(paths) == 1 and paths[0] == "-":
+        paths = [sys.stdin]
 
     skip_func = None
     if exists(args.chunksums_file):
@@ -147,7 +170,7 @@ def main():
         output_file = open(args.chunksums_file, "w")
 
     compute(
-        args.path,
+        paths,
         output_file,
         args.alg_name,
         skip_func=skip_func,

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import re
+import sys
 from os.path import getsize
 from os.path import isdir
 
@@ -108,6 +109,17 @@ def format_a_result(path, result, alg_name):
     return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
 
 
+def iter_files(paths):
+    for path in paths:
+        if path == sys.stdin:
+            for line in sys.stdin:
+                yield line.strip("\n")
+        elif isdir(path):
+            yield from sorted_walk(path)
+        else:
+            yield path
+
+
 def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
     total = sum([get_total_size(path) for path in paths])
 
@@ -119,11 +131,7 @@ def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
         unit_divisor=1024,
     )
 
-    for path in paths:
-        if isdir(path):
-            walk(sorted_walk(path), output_file, pbar, alg_name, skip_func)
-        else:
-            walk([path], output_file, pbar, alg_name, skip_func)
+    walk(iter_files(paths), output_file, pbar, alg_name, skip_func)
 
 
 def walk(iter, output_file, progress_bar, alg_name="fck4sha2", skip_func=None):
@@ -148,13 +156,20 @@ def walk(iter, output_file, progress_bar, alg_name="fck4sha2", skip_func=None):
     """
 
     for path in iter:
-        size = getsize(path)
-        if skip_func and skip_func(path):
-            progress_bar and progress_bar.update(size)
-            continue
-        chunks = compute_file(open(path, "rb"), alg_name)
+        if path != sys.stdin:
+            size = getsize(path)
+            if skip_func and skip_func(path):
+                progress_bar and progress_bar.update(size)
+                continue
+            file = open(path, "rb")
+            name = path
+        else:
+            size = 0
+            file = sys.stdin
+            name = "sys.stdin"
+        chunks = compute_file(file, alg_name)
         print(
-            format_a_result(path, chunks, alg_name),
+            format_a_result(name, chunks, alg_name),
             file=output_file,
             flush=True,
         )

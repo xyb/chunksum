@@ -48,7 +48,11 @@ def get_total_size(path):
     5
     >>> get_total_size(dir.name)
     5
+    >>> get_total_size(sys.stdin)
+    0
     """
+    if path == sys.stdin:
+        return 0
     if isdir(path):
         return get_total_size_dir(path)
     return getsize(path)
