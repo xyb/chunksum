@@ -1,6 +1,7 @@
 import os
 import sys
 from os.path import getsize
+from os.path import isdir
 from os.path import join
 
 from tqdm.auto import tqdm
@@ -36,16 +37,24 @@ def get_tqdm_limited_desc(desc, fd=sys.stdout):
         return desc
 
 
-def get_total_size(dir):
+def get_total_size(path):
     """
     >>> import tempfile
     >>> import os.path
     >>> dir = tempfile.TemporaryDirectory()
     >>> file1 = os.path.join(dir.name, 'testfile')
     >>> _ = open(file1, 'wb').write(b'hello')
+    >>> get_total_size(file1)
+    5
     >>> get_total_size(dir.name)
     5
     """
+    if isdir(path):
+        return get_total_size_dir(path)
+    return getsize(path)
+
+
+def get_total_size_dir(dir):
     total = 0
     with tqdm(desc="get total file size", delay=0.5) as t:
         for root, dirs, files in os.walk(dir):

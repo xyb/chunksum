@@ -2,7 +2,7 @@ import argparse
 import sys
 from os.path import exists
 
-from .chunksum import walk
+from .chunksum import compute
 from .parser import parse_chunksums
 from .utils import get_total_size
 
@@ -127,7 +127,7 @@ def main():
         "--incr-file",
         help="incremental updates file path",
     )
-    parser.add_argument("dir", nargs=1, help="directory")
+    parser.add_argument("path", nargs="+", help="path to check")
     args = parser.parse_args()
 
     skip_func = None
@@ -143,9 +143,9 @@ def main():
     else:
         output_file = open(args.chunksums_file, "w")
 
-    total = get_total_size(args.dir[0])
-    walk(
-        args.dir[0],
+    total = sum([get_total_size(path) for path in args.path])
+    compute(
+        args.path,
         output_file,
         args.alg_name,
         skip_func=skip_func,
