@@ -13,6 +13,7 @@ from .chunksize import MEGA
 from .hash import hash_digest_size
 from .iter import iter_file_content
 from .utils import get_total_size
+from .utils import is_file_obj
 from .utils import sorted_walk
 
 
@@ -114,6 +115,8 @@ def iter_files(paths):
         if path == sys.stdin:
             for line in sys.stdin:
                 yield line.strip("\n")
+        elif hasattr(sys.stdin, "buffer") and path == sys.stdin.buffer:
+            yield path
         elif isdir(path):
             yield from sorted_walk(path)
         else:
@@ -121,7 +124,13 @@ def iter_files(paths):
 
 
 def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
-    total = sum([get_total_size(path) for path in paths])
+    if not paths:
+        return
+
+    if is_file_obj(paths[0]):
+        total = 0
+    else:
+        total = sum([get_total_size(path) for path in paths])
 
     pbar = tqdm(
         desc="chunksum",
@@ -158,14 +167,14 @@ def walk(iter, output_file, progress_bar, alg_name="fck4sha2", skip_func=None):
     >>> pipe_in = io.BytesIO(b'hello')
     >>> sys.stdin = pipe_in  # hack stdin
     >>> walk([sys.stdin], sys.stdout, None)
-    9595...3d50  sys.stdin  fck4sha2!2cf2...9824:5
+    9595...3d50  <stdin>  fck4sha2!2cf2...9824:5
     """
 
     for path in iter:
-        if hasattr(path, "read"):  # file obj
+        if is_file_obj(path):
             size = 0
             file = path
-            name = "sys.stdin"
+            name = "<stdin>"
         else:
             size = getsize(path)
             if skip_func and skip_func(path):

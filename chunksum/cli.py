@@ -149,12 +149,24 @@ def main():
         "--incr-file",
         help="incremental updates file path",
     )
+    parser.add_argument(
+        "-x",
+        "--consumer-mode",
+        action="store_true",
+        help=argparse.SUPPRESS,  # get paths from stdin
+    )
     parser.add_argument("path", nargs="*", help="path to check")
     args = parser.parse_args()
 
     paths = args.path
-    if len(paths) == 1 and paths[0] == "-":
+    if args.consumer_mode:
+        # check input chunksums
+        paths = [sys.stdin.buffer]
+    elif len(paths) == 1 and paths[0] == "-":
         paths = [sys.stdin]
+
+    if not paths:
+        parser.print_help()
 
     skip_func = None
     if exists(args.chunksums_file):

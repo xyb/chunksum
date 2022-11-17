@@ -37,6 +37,10 @@ def get_tqdm_limited_desc(desc, fd=sys.stdout):
         return desc
 
 
+def is_file_obj(file):
+    return hasattr(file, "read")
+
+
 def get_total_size(path):
     """
     >>> import tempfile
@@ -51,7 +55,7 @@ def get_total_size(path):
     >>> get_total_size(sys.stdin)
     0
     """
-    if path == sys.stdin:
+    if is_file_obj(path):
         return 0
     if isdir(path):
         return get_total_size_dir(path)
