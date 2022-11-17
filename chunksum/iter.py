@@ -7,7 +7,7 @@ from .utils import get_tqdm_limited_desc
 
 
 def iter_file_content(file, size=1024):
-    if hasattr(file, "name"):
+    if hasattr(file, "name") and file.name != "<stdin>":
         yield from _iter_file_content_progress(file, file.name, size=size)
     else:
         yield from _iter_file_content(file, size=size)

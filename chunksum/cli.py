@@ -2,9 +2,8 @@ import argparse
 import sys
 from os.path import exists
 
-from .chunksum import walk
+from .chunksum import compute
 from .parser import parse_chunksums
-from .utils import get_total_size
 
 command_desc = "Print FastCDC rolling hash chunks and checksums."
 command_long_desc = """
@@ -53,7 +52,7 @@ def included_in_chunksums(chunksums_file):
 def main():
     """
     # help
-    >>> sys.argv = ['chunksum', '-h']
+    >>> sys.argv = ['chunksum']
     >>> try:
     ...   main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     ... except:
@@ -104,6 +103,36 @@ def main():
     ...   print(line.strip())
     95...50  .../testfile  fck4sha2!2c...24:5
     63...06  .../newfile  fck4sha2!48...a7:5
+
+    # compute files
+    >>> chunksums = tempfile.NamedTemporaryFile()
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, file1, file2]
+    >>> main()
+    >>> for line in open(chunksums.name).readlines():
+    ...   print(line.strip())
+    95...50  .../testfile  fck4sha2!2c...24:5
+    63...06  .../newfile  fck4sha2!48...a7:5
+
+    # read file or dir list from stdin, consumer mode
+    >>> import io
+    >>> pipe_in = io.StringIO(file1 + '\\n' + file2 + '\\n')
+    >>> sys.stdin = pipe_in  # hack stdin
+    >>> from . import chunksum
+    >>> chunksum.sys.stdin = pipe_in
+    >>> chunksums = tempfile.NamedTemporaryFile()
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-x', '-']
+    >>> main()
+    >>> for line in open(chunksums.name).readlines():
+    ...   print(line.strip())
+    95...50  .../testfile  fck4sha2!2c...24:5
+    63...06  .../newfile  fck4sha2!48...a7:5
+
+    # read content from stdin
+    >>> pipe_in = io.BytesIO(b'hello')
+    >>> sys.stdin.buffer = pipe_in  # hack stdin
+    >>> sys.argv = ['chunksum', '-f', '-', '-']
+    >>> main()
+    95...50  <stdin>  fck4sha2!2c...24:5
     """
     parser = argparse.ArgumentParser(
         description=command_desc,
@@ -127,8 +156,24 @@ def main():
         "--incr-file",
         help="incremental updates file path",
     )
-    parser.add_argument("dir", nargs=1, help="directory")
+    parser.add_argument(
+        "-x",
+        "--consumer-mode",
+        action="store_true",
+        help=argparse.SUPPRESS,  # get paths from stdin
+    )
+    parser.add_argument("path", nargs="*", help="path to check")
     args = parser.parse_args()
+
+    paths = args.path
+    if args.consumer_mode:
+        paths = [sys.stdin]
+    elif len(paths) == 1 and paths[0] == "-":
+        # check input chunksums
+        paths = [sys.stdin.buffer]
+
+    if not paths:
+        parser.print_help()
 
     skip_func = None
     if exists(args.chunksums_file):
@@ -143,13 +188,11 @@ def main():
     else:
         output_file = open(args.chunksums_file, "w")
 
-    total = get_total_size(args.dir[0])
-    walk(
-        args.dir[0],
+    compute(
+        paths,
         output_file,
         args.alg_name,
         skip_func=skip_func,
-        total=total,
     )
 
 

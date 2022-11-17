@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import re
+import sys
 from os.path import getsize
+from os.path import isdir
 
 from tqdm.auto import tqdm
 
@@ -10,6 +12,8 @@ from .chunksize import KILO
 from .chunksize import MEGA
 from .hash import hash_digest_size
 from .iter import iter_file_content
+from .utils import get_total_size
+from .utils import is_file_obj
 from .utils import sorted_walk
 
 
@@ -106,22 +110,63 @@ def format_a_result(path, result, alg_name):
     return f"{digest.hex()}  {path}  {alg_name}!{chunks}"
 
 
-def walk(target, output_file, alg_name="fck4sha2", skip_func=None, total=0):
+def iter_lines(file):
+    for line in file:
+        yield line.strip("\n")
+
+
+def iter_by_type(path):
+    if path == sys.stdin:
+        yield from iter_lines(sys.stdin)
+    elif hasattr(sys.stdin, "buffer") and path == sys.stdin.buffer:
+        yield path  # pragma: no cover
+    elif isdir(path):
+        yield from sorted_walk(path)
+    else:
+        yield path
+
+
+def iter_files(paths):
+    for path in paths:
+        yield from iter_by_type(path)
+
+
+def compute_stdin(file, output_file, alg_name="fck4sha2", skip_func=None):
     """
-    >>> import os.path
+    >>> import io
+    >>> pipe_in = io.BytesIO(b'hello')
+    >>> sys.stdin = pipe_in  # hack stdin
+    >>> compute_stdin(sys.stdin, sys.stdout)
+    9595...3d50  <stdin>  fck4sha2!2cf2...9824:5
+    """
+
+    name = "<stdin>"
+    chunks = compute_file(file, alg_name)
+    print(
+        format_a_result(name, chunks, alg_name),
+        file=output_file,
+        flush=True,
+    )
+
+
+def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
+    """
     >>> import sys
-    >>> import tempfile
-    >>> dir = tempfile.TemporaryDirectory()
-    >>> path = os.path.join(dir.name, 'testfile')
-    >>> _ = open(path, 'wb').write(b'hello')
-    >>> walk(dir.name, sys.stdout)
-    9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
-
-    # skip files
-    >>> walk(dir.name, sys.stdout, skip_func=lambda x: x.endswith('testfile'))
+    >>> compute([], sys.stdout)
     """
+    if not paths:
+        return
 
-    t = tqdm(
+    if (
+        is_file_obj(paths[0])
+        and hasattr(sys.stdin, "buffer")
+        and paths[0] == sys.stdin.buffer
+    ):
+        return compute_stdin(paths[0], output_file, alg_name, skip_func)
+
+    total = sum([get_total_size(path) for path in paths])
+
+    pbar = tqdm(
         desc="chunksum",
         total=total,
         unit="B",
@@ -129,14 +174,40 @@ def walk(target, output_file, alg_name="fck4sha2", skip_func=None, total=0):
         unit_divisor=1024,
     )
 
-    for path in sorted_walk(target):
+    walk(iter_files(paths), output_file, pbar, alg_name, skip_func)
+
+
+def walk(iter, output_file, progress_bar, alg_name="fck4sha2", skip_func=None):
+    """
+    # check a directory
+    >>> import os.path
+    >>> import sys
+    >>> import tempfile
+    >>> dir = tempfile.TemporaryDirectory()
+    >>> path = os.path.join(dir.name, 'testfile')
+    >>> _ = open(path, 'wb').write(b'hello')
+    >>> walk(sorted_walk(dir.name), sys.stdout, None)
+    9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
+
+    # check a file
+    >>> walk([path], sys.stdout, None)
+    9595...3d50  .../testfile  fck4sha2!2cf2...9824:5
+
+    # skip files
+    >>> skip_func=lambda x: x.endswith('testfile')
+    >>> walk(sorted_walk(dir.name), sys.stdout, None, skip_func=skip_func)
+    """
+
+    for path in iter:
+        size = getsize(path)
         if skip_func and skip_func(path):
-            t.update(getsize(path))
+            progress_bar and progress_bar.update(size)
             continue
-        chunks = compute_file(open(path, "rb"), alg_name)
+        file = open(path, "rb")
+        chunks = compute_file(file, alg_name)
         print(
             format_a_result(path, chunks, alg_name),
             file=output_file,
             flush=True,
         )
-        t.update(getsize(path))
+        progress_bar and progress_bar.update(size)
