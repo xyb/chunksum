@@ -157,6 +157,12 @@ def main():
         help="incremental updates file path",
     )
     parser.add_argument(
+        "-m",
+        "--multi-process",
+        action="store_true",
+        help="multi processing",
+    )
+    parser.add_argument(
         "-x",
         "--consumer-mode",
         action="store_true",
@@ -165,12 +171,15 @@ def main():
     parser.add_argument("path", nargs="*", help="path to check")
     args = parser.parse_args()
 
+    no_multiprocess = False
     paths = args.path
     if args.consumer_mode:
         paths = [sys.stdin]
+        no_multiprocess = True
     elif len(paths) == 1 and paths[0] == "-":
         # check input chunksums
         paths = [sys.stdin.buffer]
+        no_multiprocess = True
 
     if not paths:
         parser.print_help()
@@ -188,12 +197,22 @@ def main():
     else:
         output_file = open(args.chunksums_file, "w")
 
-    compute(
-        paths,
-        output_file,
-        args.alg_name,
-        skip_func=skip_func,
-    )
+    from .chunksum import compute_mp
+
+    if args.multi_process and not no_multiprocess:
+        compute_mp(
+            paths,
+            output_file,
+            args.alg_name,
+            skip_func=skip_func,
+        )
+    else:
+        compute(
+            paths,
+            output_file,
+            args.alg_name,
+            skip_func=skip_func,
+        )
 
 
 if __name__ == "__main__":
