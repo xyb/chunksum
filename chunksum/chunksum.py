@@ -153,20 +153,26 @@ def walk(iter, output_file, progress_bar, alg_name="fck4sha2", skip_func=None):
     # skip files
     >>> skip_func=lambda x: x.endswith('testfile')
     >>> walk(sorted_walk(dir.name), sys.stdout, None, skip_func=skip_func)
+
+    >>> import io
+    >>> pipe_in = io.BytesIO(b'hello')
+    >>> sys.stdin = pipe_in  # hack stdin
+    >>> walk([sys.stdin], sys.stdout, None)
+    9595...3d50  sys.stdin  fck4sha2!2cf2...9824:5
     """
 
     for path in iter:
-        if path != sys.stdin:
+        if hasattr(path, "read"):  # file obj
+            size = 0
+            file = path
+            name = "sys.stdin"
+        else:
             size = getsize(path)
             if skip_func and skip_func(path):
                 progress_bar and progress_bar.update(size)
                 continue
             file = open(path, "rb")
             name = path
-        else:
-            size = 0
-            file = sys.stdin
-            name = "sys.stdin"
         chunks = compute_file(file, alg_name)
         print(
             format_a_result(name, chunks, alg_name),
