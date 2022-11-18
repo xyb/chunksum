@@ -3,6 +3,7 @@ import sys
 from os.path import exists
 
 from .chunksum import compute
+from .mp import compute_mp
 from .parser import parse_chunksums
 
 command_desc = "Print FastCDC rolling hash chunks and checksums."
@@ -196,8 +197,6 @@ def main():
         output_file = open(args.chunksums_file, "a")
     else:
         output_file = open(args.chunksums_file, "w")
-
-    from .chunksum import compute_mp
 
     if args.multi_process and not no_multiprocess:
         compute_mp(
