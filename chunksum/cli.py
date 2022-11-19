@@ -33,7 +33,7 @@ Examples:
 
   $ %(prog)s /etc > ~/etc.chunksums
 
-  $ %(prog)s -m /etc
+  $ %(prog)s -n fcm4blake2b32 -m ~/Videos
 
   $ %(prog)s -n fcm4blake2b32 -f ~/Videos/chunksums ~/Videos
 

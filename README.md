@@ -52,7 +52,7 @@ Examples:
 
   $ chunksum /etc > ~/etc.chunksums
 
-  $ chunksum -m /etc
+  $ chunksum -n fcm4blake2b32 -m ~/Videos
 
   $ chunksum -n fcm4blake2b32 -f ~/Videos/chunksums ~/Videos
 
