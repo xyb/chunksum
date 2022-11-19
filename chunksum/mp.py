@@ -135,8 +135,6 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
             ),
         )
         consumers.append(p)
-
-    for p in consumers:
         p.start()
 
     proc_collector.start()
