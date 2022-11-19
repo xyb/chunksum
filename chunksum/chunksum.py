@@ -172,6 +172,7 @@ def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
         unit="B",
         unit_scale=True,
         unit_divisor=1024,
+        dynamic_ncols=True,
     )
 
     def update_progress(size):
