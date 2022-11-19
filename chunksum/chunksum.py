@@ -213,6 +213,10 @@ def compute_one_file(
     skip_func=None,
     bar_position=None,
 ):
+    """
+    >>> import sys
+    >>> compute_one_file('/tmp/nothing', sys.stdout)
+    """
     size = get_size(path)
     if skip_func and skip_func(path):
         update_progress and update_progress(size)
