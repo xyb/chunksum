@@ -56,9 +56,20 @@ def collector(queue_sums, output_file, busy, stop):
             sums = queue_sums.get(timeout=0.001)
         except Empty:
             continue
+
         busy.set()
         print(sums, file=output_file, flush=True)
         busy.clear()
+
+
+def wait_consumers(consumers, queue_path, busy_events, stop):
+    while True:
+        if queue_path.empty() and all([not e.is_set() for e in busy_events]):
+            stop.set()
+            for p in consumers:
+                p.join()
+            break
+        time.sleep(0.001)  # pragma: no cover
 
 
 def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
@@ -107,7 +118,7 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
         args=(queue_sums, output_file, busy, stop_collector),
     )
 
-    stop_cons = Event()
+    stop_consumers = Event()
     for i in range(cpu_count()):
         busy = Event()
         busy_events.append(busy)
@@ -121,7 +132,7 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
                 queue_path,
                 queue_sums,
                 busy,
-                stop_cons,
+                stop_consumers,
             ),
         )
         consumers.append(p)
@@ -132,18 +143,11 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
     proc_collector.start()
     proc_producer.start()
 
-    # wait for producer
+    # wait producer
     proc_producer.join()
 
-    # wairt for consumer
-    while True:
-        if queue_path.empty() and all([not e.is_set() for e in busy_events]):
-            stop_cons.set()
-            for p in consumers:
-                p.join()
-            break
-        time.sleep(0.001)  # pragma: no cover
+    wait_consumers(consumers, queue_path, busy_events, stop_consumers)
 
-    # wait for collector
+    # wait collector
     stop_collector.set()
     proc_collector.join()
