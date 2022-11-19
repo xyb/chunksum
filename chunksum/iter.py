@@ -1,8 +1,7 @@
-from os.path import getsize
-
 from tqdm.auto import tqdm
 from tqdm.utils import CallbackIOWrapper
 
+from .utils import get_size
 from .utils import get_tqdm_limited_desc
 
 
@@ -35,7 +34,7 @@ def _iter_file_content(file, size=1024):
 
 def _iter_file_content_progress(file, path, size=1024, bar_position=None):
     kwargs = dict(
-        total=getsize(path),
+        total=get_size(path),
         desc=get_tqdm_limited_desc(path),
         unit="B",
         unit_scale=True,

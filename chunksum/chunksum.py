@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import re
 import sys
-from os.path import getsize
 from os.path import isdir
 
 from tqdm.auto import tqdm
@@ -12,6 +11,7 @@ from .chunksize import KILO
 from .chunksize import MEGA
 from .hash import hash_digest_size
 from .iter import iter_file_content
+from .utils import get_size
 from .utils import get_total_size
 from .utils import is_file_obj
 from .utils import sorted_walk
@@ -213,7 +213,7 @@ def compute_one_file(
     skip_func=None,
     bar_position=None,
 ):
-    size = getsize(path)
+    size = get_size(path)
     if skip_func and skip_func(path):
         update_progress and update_progress(size)
         return

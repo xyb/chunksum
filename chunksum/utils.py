@@ -1,6 +1,5 @@
 import os
 import sys
-from os.path import getsize
 from os.path import isdir
 from os.path import join
 
@@ -41,6 +40,28 @@ def is_file_obj(file):
     return hasattr(file, "read")
 
 
+def get_size(path):
+    """
+    # normal file
+    >>> import tempfile
+    >>> dir = tempfile.TemporaryDirectory()
+    >>> file1 = os.path.join(dir.name, 'testfile')
+    >>> _ = open(file1, 'wb').write(b'hello')
+    >>> get_size(file1)
+    5
+
+    # not exists
+    >>> import os
+    >>> file2 = os.path.join(dir.name, 'none')
+    >>> get_size(file2)
+    0
+    """
+    if os.path.exists(path):
+        return os.path.getsize(path)
+    else:
+        return 0
+
+
 def get_total_size(path):
     """
     >>> import tempfile
@@ -59,7 +80,7 @@ def get_total_size(path):
         return 0
     if isdir(path):
         return get_total_size_dir(path)
-    return getsize(path)
+    return get_size(path)
 
 
 def get_total_size_dir(dir):
@@ -68,7 +89,7 @@ def get_total_size_dir(dir):
         for root, dirs, files in os.walk(dir):
             for file in files:
                 path = join(root, file)
-                total += getsize(path)
+                total += get_size(path)
                 t.update()
     return total
 
