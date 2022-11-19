@@ -66,8 +66,7 @@ def wait_consumers(consumers, queue_path, busy_events, stop):
     while True:
         if queue_path.empty() and all([not e.is_set() for e in busy_events]):
             stop.set()
-            for p in consumers:
-                p.join()
+            [p.join() for p in consumers]
             break
         time.sleep(0.001)  # pragma: no cover
 
