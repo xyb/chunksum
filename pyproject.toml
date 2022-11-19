@@ -23,6 +23,7 @@ chunksum = 'chunksum.cli:main'
 python = "^3.7"
 fastcdc = "^1.4.2"
 tqdm = "^4.64.1"
+wcwidth = "^0.2.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"

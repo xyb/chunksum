@@ -5,6 +5,7 @@ from os.path import join
 
 from tqdm.auto import tqdm
 from tqdm.utils import _screen_shape_wrapper
+from wcwidth import wcswidth
 
 
 def get_screen_width(fd=sys.stdout):
@@ -14,6 +15,26 @@ def get_screen_width(fd=sys.stdout):
     """
     dynamic = _screen_shape_wrapper()
     return dynamic(fd)
+
+
+def shrink_string(s, width):
+    """
+    >>> shrink_string('Hello, world', 4)
+    'orld'
+    >>> shrink_string('你好，世界', 4)
+    '世界'
+    >>> shrink_string('你好，世界', 5)
+    '世界'
+    >>> shrink_string('Hello, world', 50)
+    'Hello, world'
+    >>> shrink_string('', 50)
+    ''
+    """
+    if not len(s):
+        return ""
+    if wcswidth(s) <= width:
+        return s
+    return [s[-i:] for i in range(len(s)) if wcswidth(s[-i:]) <= width][-1]
 
 
 def get_tqdm_limited_desc(desc, fd=sys.stdout):
@@ -29,9 +50,11 @@ def get_tqdm_limited_desc(desc, fd=sys.stdout):
         cols = width[0]  # pragma: no cover
     else:
         cols = default_screen_width
-    desc_limit = cols - reserve_size_for_tqdm
-    if len(desc) > desc_limit:
-        return f"...{desc[3 - desc_limit: ]}"
+    width_limit = cols - reserve_size_for_tqdm
+    if wcswidth(desc) > width_limit:
+        shorter = shrink_string(desc, width_limit - 3)
+        left_padding = "." * (width_limit - wcswidth(shorter))
+        return f"{left_padding}{shorter}"
     else:
         return desc
 
