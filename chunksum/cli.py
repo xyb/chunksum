@@ -3,6 +3,7 @@ import sys
 from os.path import exists
 
 from .chunksum import compute
+from .mp import compute_mp
 from .parser import parse_chunksums
 
 command_desc = "Print FastCDC rolling hash chunks and checksums."
@@ -133,6 +134,15 @@ def main():
     >>> sys.argv = ['chunksum', '-f', '-', '-']
     >>> main()
     95...50  <stdin>  fck4sha2!2c...24:5
+
+    # multi-process
+    >>> chunksums = tempfile.NamedTemporaryFile()
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-m', dir.name]
+    >>> main()
+    >>> for line in sorted(open(chunksums.name).readlines()):
+    ...   print(line.strip())
+    63...06  .../newfile  fck4sha2!48...a7:5
+    95...50  .../testfile  fck4sha2!2c...24:5
     """
     parser = argparse.ArgumentParser(
         description=command_desc,
@@ -157,6 +167,12 @@ def main():
         help="incremental updates file path",
     )
     parser.add_argument(
+        "-m",
+        "--multi-process",
+        action="store_true",
+        help="multi processing",
+    )
+    parser.add_argument(
         "-x",
         "--consumer-mode",
         action="store_true",
@@ -165,12 +181,15 @@ def main():
     parser.add_argument("path", nargs="*", help="path to check")
     args = parser.parse_args()
 
+    no_multiprocess = False
     paths = args.path
     if args.consumer_mode:
         paths = [sys.stdin]
+        no_multiprocess = True
     elif len(paths) == 1 and paths[0] == "-":
         # check input chunksums
         paths = [sys.stdin.buffer]
+        no_multiprocess = True
 
     if not paths:
         parser.print_help()
@@ -188,12 +207,20 @@ def main():
     else:
         output_file = open(args.chunksums_file, "w")
 
-    compute(
-        paths,
-        output_file,
-        args.alg_name,
-        skip_func=skip_func,
-    )
+    if args.multi_process and not no_multiprocess:
+        compute_mp(
+            paths,
+            output_file,
+            args.alg_name,
+            skip_func=skip_func,
+        )
+    else:
+        compute(
+            paths,
+            output_file,
+            args.alg_name,
+            skip_func=skip_func,
+        )
 
 
 if __name__ == "__main__":
