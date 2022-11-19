@@ -1,20 +1,21 @@
 # chunksum
 
+Print FastCDC rolling hash chunks and checksums.
+
 [![test](https://github.com/xyb/chunksum/actions/workflows/test.yml/badge.svg)](https://github.com/xyb/chunksum/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/xyb/chunksum/branch/main/graph/badge.svg?token=LR3ET0TBK2)](https://codecov.io/gh/xyb/chunksum)
 [![Maintainability](https://api.codeclimate.com/v1/badges/9bd0a3b4fcefb196b2f8/maintainability)](https://codeclimate.com/github/xyb/chunksum/maintainability)
 [![Latest version](https://img.shields.io/pypi/v/chunksum.svg)](https://pypi.org/project/chunksum/)
 [![Support python versions](https://img.shields.io/pypi/pyversions/chunksum)](https://pypi.org/project/chunksum/)
 
-Print FastCDC rolling hash chunks and checksums.
-
 ```
-usage: chunksum [-h] [-n ALG_NAME] [-f CHUNKSUMS_FILE] [-i INCR_FILE] dir
+usage: chunksum [-h] [-n ALG_NAME] [-f CHUNKSUMS_FILE] [-i INCR_FILE] [-m]
+                [path ...]
 
 Print FastCDC rolling hash chunks and checksums.
 
 positional arguments:
-  dir                   directory
+  path                  path to compute chunksums
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -24,6 +25,7 @@ optional arguments:
                         chunksum file path, `-' for standard output.
   -i INCR_FILE, --incr-file INCR_FILE
                         incremental updates file path
+  -m, --multi-process   same number of multi-processes as cpu
 
 alg-name:
   Format "fc[k|m|g][0-9][sha2|blake2b|blake2s][32]".
@@ -49,6 +51,8 @@ chunksums-file and incr-file:
 Examples:
 
   $ chunksum /etc > ~/etc.chunksums
+
+  $ chunksum -m /etc
 
   $ chunksum -n fcm4blake2b32 -f ~/Videos/chunksums ~/Videos
 

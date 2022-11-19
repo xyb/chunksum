@@ -62,7 +62,7 @@ def collector(queue_sums, output_file, busy, stop):
         busy.clear()
 
 
-def progresser(queue_progress, total):
+def progress_monitor(queue_progress, total):
     progress_bar = tqdm(
         desc="chunksum",
         total=total,
@@ -115,17 +115,17 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
 
     total = sum([get_total_size(path) for path in paths])
 
-    queue_progress = Queue(1000)
-    progress = Process(target=progresser, args=(queue_progress, total))
+    queue_progress = Queue(10)
+    progress = Process(target=progress_monitor, args=(queue_progress, total))
     progress.start()
 
     def update_progress(size):
         queue_progress.put(size)
 
-    consumers = []
-    queue_path = Queue(10)
-    queue_sums = Queue(10)
     busy_events = []
+    consumers = []
+    queue_sums = Queue(10)
+    queue_path = Queue(10)
 
     proc_producer = Process(target=producer, args=(queue_path, iter_files(paths)))
     stop_collector = Event()
