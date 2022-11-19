@@ -40,6 +40,7 @@ def _iter_file_content_progress(file, path, size=1024, bar_position=None):
         unit_scale=True,
         unit_divisor=1024,
         delay=0.5,  # display only if the file is really large
+        dynamic_ncols=True,
     )
     if bar_position is not None:
         kwargs["position"] = bar_position

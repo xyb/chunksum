@@ -70,6 +70,7 @@ def progress_monitor(queue_progress, total):
         unit_scale=True,
         unit_divisor=1024,
         position=0,
+        dynamic_ncols=True,
     )
 
     while True:
