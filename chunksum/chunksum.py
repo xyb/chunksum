@@ -217,7 +217,11 @@ def compute_one_file(
     if skip_func and skip_func(path):
         update_progress and update_progress(size)
         return
-    file = open(path, "rb")
+    try:
+        file = open(path, "rb")
+    except (PermissionError, FileNotFoundError):
+        update_progress and update_progress(size)
+        return
     chunks = compute_file(file, alg_name, bar_position=bar_position)
     sums = format_a_result(path, chunks, alg_name)
     if output_file:
