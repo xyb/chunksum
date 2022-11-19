@@ -1,7 +1,7 @@
+import multiprocessing
 import time
 from multiprocessing import cpu_count
 from multiprocessing import Event
-from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
 
@@ -91,6 +91,8 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
     queue_path = Queue(10)
     queue_sums = Queue(10)
     busy_events = []
+
+    Process = multiprocessing.get_context("fork").Process
 
     proc_producer = Process(target=producer, args=(queue_path, iter_files(paths)))
     stop_collector = Event()
