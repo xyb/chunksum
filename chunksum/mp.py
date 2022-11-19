@@ -92,11 +92,14 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
     queue_sums = Queue(10)
     busy_events = []
 
-    prod = Process(target=producer, args=(queue_path, iter_files(paths)))
-    stop_coll = Event()
+    proc_producer = Process(target=producer, args=(queue_path, iter_files(paths)))
+    stop_collector = Event()
     busy = Event()
     busy_events.append(busy)
-    coll = Process(target=collector, args=(queue_sums, output_file, busy, stop_coll))
+    proc_collector = Process(
+        target=collector,
+        args=(queue_sums, output_file, busy, stop_collector),
+    )
 
     stop_cons = Event()
     for i in range(cpu_count()):
@@ -120,11 +123,11 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
     for p in consumers:
         p.start()
 
-    coll.start()
-    prod.start()
+    proc_collector.start()
+    proc_producer.start()
 
     # wait for producer
-    prod.join()
+    proc_producer.join()
 
     # wairt for consumer
     while True:
@@ -136,5 +139,5 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
         time.sleep(0.001)  # pragma: no cover
 
     # wait for collector
-    stop_coll.set()
-    coll.join()
+    stop_collector.set()
+    proc_collector.join()
