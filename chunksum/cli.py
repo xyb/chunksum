@@ -29,10 +29,11 @@ chunksums-file and incr-file:
   resume a previous check, or if you want to find the incremental
   updates (new files) of the directory.
 
-
 Examples:
 
   $ %(prog)s /etc > ~/etc.chunksums
+
+  $ %(prog)s -m /etc
 
   $ %(prog)s -n fcm4blake2b32 -f ~/Videos/chunksums ~/Videos
 
@@ -170,15 +171,15 @@ def main():
         "-m",
         "--multi-process",
         action="store_true",
-        help="multi processing",
+        help="same number of multi-processes as cpu",
     )
     parser.add_argument(
         "-x",
         "--consumer-mode",
         action="store_true",
-        help=argparse.SUPPRESS,  # get paths from stdin
+        help=argparse.SUPPRESS,  # get paths from stdin, but hide this command
     )
-    parser.add_argument("path", nargs="*", help="path to check")
+    parser.add_argument("path", nargs="*", help="path to compute chunksums")
     args = parser.parse_args()
 
     no_multiprocess = False
@@ -193,6 +194,7 @@ def main():
 
     if not paths:
         parser.print_help()
+        sys.exit()
 
     skip_func = None
     if exists(args.chunksums_file):
