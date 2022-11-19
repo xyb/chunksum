@@ -57,7 +57,7 @@ def get_chunker(size_name="", avg=1024, min=256, max=4096):
     return Chunker(size.avg, size.min, size.max)
 
 
-def compute_file(file, alg_name="fck4sha2"):
+def compute_file(file, alg_name="fck4sha2", bar_position=None):
     """
 
     >>> import io
@@ -73,7 +73,7 @@ def compute_file(file, alg_name="fck4sha2"):
     chunker = get_chunker(chunk_size_name)
     result = []
     buffer_size = 4 * 1024 * 1024
-    iter_ = iter_file_content(file, size=buffer_size)
+    iter_ = iter_file_content(file, size=buffer_size, bar_position=bar_position)
 
     hasher_name = alg_name[len("fck0") :] or hash
     for data in iter_:
@@ -174,10 +174,13 @@ def compute(paths, output_file, alg_name="fck4sha2", skip_func=None):
         unit_divisor=1024,
     )
 
-    walk(iter_files(paths), output_file, pbar, alg_name, skip_func)
+    def update_progress(size):
+        pbar.update(size)
+
+    walk(iter_files(paths), output_file, update_progress, alg_name, skip_func)
 
 
-def walk(iter, output_file, progress_bar=None, alg_name="fck4sha2", skip_func=None):
+def walk(iter, output_file, update_progress=None, alg_name="fck4sha2", skip_func=None):
     """
     # check a directory
     >>> import os.path
@@ -199,24 +202,25 @@ def walk(iter, output_file, progress_bar=None, alg_name="fck4sha2", skip_func=No
     """
 
     for path in iter:
-        compute_one_file(path, output_file, progress_bar, alg_name, skip_func)
+        compute_one_file(path, output_file, update_progress, alg_name, skip_func)
 
 
 def compute_one_file(
     path,
     output_file,
-    progress_bar=None,
+    update_progress=None,
     alg_name="fck4sha2",
     skip_func=None,
+    bar_position=None,
 ):
     size = getsize(path)
     if skip_func and skip_func(path):
-        progress_bar and progress_bar.update(size)
+        update_progress and update_progress(size)
         return
     file = open(path, "rb")
-    chunks = compute_file(file, alg_name)
+    chunks = compute_file(file, alg_name, bar_position=bar_position)
     sums = format_a_result(path, chunks, alg_name)
     if output_file:
         print(sums, file=output_file, flush=True)
-    progress_bar and progress_bar.update(size)
+    update_progress and update_progress(size)
     return sums

@@ -18,8 +18,9 @@ def producer(queue_path, iter):
 
 
 def consumer(
+    index,
     output_file,
-    progress_bar,
+    update_progress,
     alg_name,
     skip_func,
     queue_path,
@@ -35,17 +36,16 @@ def consumer(
 
         busy.set()
 
-        if skip_func and skip_func(path):
-            busy.clear()
-            continue
         sums = compute_one_file(
             path,
             output_file=output_file,
-            progress_bar=progress_bar,
+            update_progress=update_progress,
             alg_name=alg_name,
             skip_func=skip_func,
+            bar_position=index,
         )
-        queue_sums.put(sums)
+        if sums:
+            queue_sums.put(sums)
 
         busy.clear()
 
@@ -62,9 +62,30 @@ def collector(queue_sums, output_file, busy, stop):
         busy.clear()
 
 
+def progresser(queue_progress, total):
+    progress_bar = tqdm(
+        desc="chunksum",
+        total=total,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+        position=0,
+    )
+
+    while True:
+        try:
+            size = queue_progress.get(timeout=0.001)
+        except Empty:
+            continue
+        progress_bar.update(size)
+        if total == progress_bar.n:
+            break
+
+
 def wait_consumers(consumers, queue_path, busy_events, stop):
     while True:
-        if queue_path.empty() and all([not e.is_set() for e in busy_events]):
+        all_idle = all([not e.is_set() for e in busy_events])
+        if all_idle and queue_path.empty():
             stop.set()
             [p.join() for p in consumers]
             break
@@ -89,24 +110,22 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
     >>> open(chunksums.name).readlines()
     []
     """
+    # fix macos issue. see https://github.com/pytorch/pytorch/pull/36542
+    Process = multiprocessing.get_context("fork").Process
 
     total = sum([get_total_size(path) for path in paths])
 
-    progress_bar = tqdm(
-        desc="chunksum",
-        total=total,
-        unit="B",
-        unit_scale=True,
-        unit_divisor=1024,
-    )
+    queue_progress = Queue(1000)
+    progress = Process(target=progresser, args=(queue_progress, total))
+    progress.start()
+
+    def update_progress(size):
+        queue_progress.put(size)
 
     consumers = []
     queue_path = Queue(10)
     queue_sums = Queue(10)
     busy_events = []
-
-    # fix macos issue. see https://github.com/pytorch/pytorch/pull/36542
-    Process = multiprocessing.get_context("fork").Process
 
     proc_producer = Process(target=producer, args=(queue_path, iter_files(paths)))
     stop_collector = Event()
@@ -124,8 +143,9 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
         p = Process(
             target=consumer,
             args=(
+                i + 1,
                 output_file,
-                progress_bar,
+                update_progress,
                 alg_name,
                 skip_func,
                 queue_path,
