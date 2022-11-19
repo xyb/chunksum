@@ -32,18 +32,21 @@ def consumer(
             path = queue_path.get(timeout=0.001)
         except Empty:
             continue
+
         busy.set()
+
         if skip_func and skip_func(path):
             busy.clear()
             continue
         sums = compute_one_file(
             path,
-            output_file=None,
+            output_file=output_file,
             progress_bar=progress_bar,
             alg_name=alg_name,
             skip_func=skip_func,
         )
         queue_sums.put(sums)
+
         busy.clear()
 
 
@@ -92,6 +95,7 @@ def compute_mp(paths, output_file, alg_name="fck4sha2", skip_func=None):
     queue_sums = Queue(10)
     busy_events = []
 
+    # fix macos issue. see https://github.com/pytorch/pytorch/pull/36542
     Process = multiprocessing.get_context("fork").Process
 
     proc_producer = Process(target=producer, args=(queue_path, iter_files(paths)))
