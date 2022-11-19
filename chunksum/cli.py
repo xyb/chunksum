@@ -134,6 +134,15 @@ def main():
     >>> sys.argv = ['chunksum', '-f', '-', '-']
     >>> main()
     95...50  <stdin>  fck4sha2!2c...24:5
+
+    # multi-process
+    >>> chunksums = tempfile.NamedTemporaryFile()
+    >>> sys.argv = ['chunksum', '-f', chunksums.name, '-m', dir.name]
+    >>> main()
+    >>> for line in sorted(open(chunksums.name).readlines()):
+    ...   print(line.strip())
+    63...06  .../newfile  fck4sha2!48...a7:5
+    95...50  .../testfile  fck4sha2!2c...24:5
     """
     parser = argparse.ArgumentParser(
         description=command_desc,
